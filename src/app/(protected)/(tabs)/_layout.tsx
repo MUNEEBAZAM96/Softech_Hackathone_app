@@ -76,21 +76,15 @@ function AnimatedTabItem({
   };
   const label = LABEL_MAP[route.name] ?? route.name;
 
-  const scale = React.useRef(new Animated.Value(isFocused ? 1.14 : 1)).current;
-  const translateY = React.useRef(new Animated.Value(isFocused ? -2 : 0)).current;
+  const scale = React.useRef(new Animated.Value(isFocused ? 1.12 : 1)).current;
   const labelOpacity = React.useRef(new Animated.Value(isFocused ? 1 : 0.65)).current;
 
   React.useEffect(() => {
     Animated.parallel([
       Animated.spring(scale, {
-        toValue: isFocused ? 1.14 : 1,
+        toValue: isFocused ? 1.12 : 1,
         friction: 7,
         tension: 120,
-        useNativeDriver: true,
-      }),
-      Animated.spring(translateY, {
-        toValue: isFocused ? -2 : 0,
-        friction: 8,
         useNativeDriver: true,
       }),
       Animated.timing(labelOpacity, {
@@ -99,7 +93,7 @@ function AnimatedTabItem({
         useNativeDriver: true,
       }),
     ]).start();
-  }, [isFocused, scale, translateY, labelOpacity]);
+  }, [isFocused, scale, labelOpacity]);
 
   const iconColor = isFocused ? colors.primary : colors.textMuted;
 
@@ -115,16 +109,16 @@ function AnimatedTabItem({
       accessibilityState={{ selected: isFocused }}
       accessibilityLabel={label}
       android_ripple={{
-        color: `${colors.primary}35`,
+        color: `${colors.primary}30`,
         borderless: false,
-        foreground: true,
+        foreground: false,
       }}
     >
       <Animated.View
         style={{
           alignItems: "center",
           justifyContent: "center",
-          transform: [{ translateY }, { scale }],
+          transform: [{ scale }],
         }}
       >
         <Ionicons
@@ -137,7 +131,7 @@ function AnimatedTabItem({
             captionStyle,
             {
               color: iconColor,
-              marginTop: 3,
+              marginTop: 2,
               opacity: labelOpacity,
               fontSize: 10,
               fontWeight: isFocused ? "700" : "500",
@@ -192,57 +186,54 @@ function AnimatedFabItem({
     }).start();
   };
 
-  const ringScale = glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
+  const ringScale = glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
+  const ringOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0, 0.28] });
 
   return (
-    <Pressable
-      onLayout={onLayout}
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      style={styles.fabWrapper}
-      accessibilityRole="button"
-      accessibilityLabel="Add"
-      android_ripple={{ color: `${colors.primary}40`, borderless: true }}
-    >
-      <Animated.View style={{ transform: [{ scale }], alignItems: "center", justifyContent: "center" }}>
+    <View onLayout={onLayout} style={styles.fabWrapper}>
+      <Animated.View style={[styles.fabCore, { transform: [{ scale }] }]}>
         <Animated.View
-          style={{
-            position: "absolute",
-            width: 64,
-            height: 64,
-            borderRadius: 32,
-            borderWidth: 2,
-            borderColor: colors.primary,
-            opacity: 0.35,
-            transform: [{ scale: ringScale }],
-          }}
+          style={[
+            styles.fabRing,
+            {
+              borderColor: colors.primary,
+              opacity: ringOpacity,
+              transform: [{ scale: ringScale }],
+            },
+          ]}
           pointerEvents="none"
         />
-        <View
-          style={[
+        <Pressable
+          onPress={onPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          accessibilityRole="button"
+          accessibilityLabel="Add"
+          android_ripple={{ color: "#ffffff55", borderless: false, radius: 26 }}
+          style={({ pressed }) => [
             styles.fab,
             {
               backgroundColor: colors.primary,
               shadowColor: colors.primary,
             },
+            Platform.OS === "ios" && pressed && { opacity: 0.85 },
           ]}
         >
-          <Ionicons name="add" size={28} color="#fff" />
-        </View>
-        <Text
-          style={{
-            marginTop: 4,
-            fontSize: 10,
-            fontWeight: isFocused ? "700" : "500",
-            color: isFocused ? colors.primary : colors.textMuted,
-          }}
-          numberOfLines={1}
-        >
-          Add
-        </Text>
+          <Ionicons name="add" size={26} color="#fff" />
+        </Pressable>
       </Animated.View>
-    </Pressable>
+      <Text
+        style={{
+          marginTop: 2,
+          fontSize: 10,
+          fontWeight: isFocused ? "700" : "500",
+          color: isFocused ? colors.primary : colors.textMuted,
+        }}
+        numberOfLines={1}
+      >
+        Add
+      </Text>
+    </View>
   );
 }
 
@@ -429,71 +420,83 @@ function CustomTabBar({ state, navigation }: CustomTabBarProps) {
 const styles = StyleSheet.create({
   wrapper: {
     position: "absolute",
-    bottom: 22,
+    bottom: 18,
     left: 14,
     right: 14,
     alignItems: "center",
   },
   gradientShell: {
     width: "100%",
-    minHeight: 76,
-    borderRadius: 28,
+    minHeight: 60,
+    borderRadius: 24,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.14,
-    shadowRadius: 28,
-    elevation: 18,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 22,
+    elevation: 14,
   },
   glassTint: {
     ...StyleSheet.absoluteFillObject,
   },
   row: {
     flexDirection: "row",
-    minHeight: 72,
+    minHeight: 58,
     width: "100%",
-    alignItems: "flex-end",
+    alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 6,
-    paddingBottom: 8,
-    paddingTop: 6,
+    paddingBottom: 4,
+    paddingTop: 4,
     position: "relative",
   },
   slidingPill: {
     position: "absolute",
-    top: 10,
-    height: 50,
-    borderRadius: 25,
+    top: 6,
+    height: 46,
+    borderRadius: 23,
     borderWidth: StyleSheet.hairlineWidth,
   },
   tab: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "flex-end",
-    paddingBottom: 2,
-    minHeight: 64,
+    justifyContent: "center",
+    minHeight: 50,
+    borderRadius: 20,
+    overflow: "hidden",
     zIndex: 2,
   },
   fabWrapper: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "flex-end",
-    paddingBottom: 2,
-    minHeight: 76,
+    justifyContent: "center",
+    minHeight: 58,
     zIndex: 3,
   },
-  fab: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+  fabCore: {
     alignItems: "center",
     justifyContent: "center",
-    marginTop: -10,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.38,
-    shadowRadius: 14,
-    elevation: 10,
+    marginTop: -6,
+  },
+  fabRing: {
+    position: "absolute",
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 2,
+  },
+  fab: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.32,
+    shadowRadius: 10,
+    elevation: 9,
   },
 });
 
