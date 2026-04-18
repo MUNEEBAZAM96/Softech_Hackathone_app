@@ -2,9 +2,15 @@ import { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAtomValue } from "jotai";
 
-import { transactionsAtom } from "../../../atoms";
-import { colors, radius, spacing, typography } from "../../../constants/theme";
+import {
+  budgetAlertPreferencesAtom,
+  categoryBudgetsAtom,
+  savingsGoalsAtom,
+  transactionsAtom,
+} from "../../../atoms";
+import { colors, radius, space, type } from "../../../constants/theme";
 import { generateInsights } from "../../../services/insightsService";
+import { getFinancialCoaching } from "../../../services/coachingService";
 import { summarize } from "../../../services/transactionService";
 import { getCategoryById } from "../../../constants/categories";
 import { formatCurrency } from "../../../utils/format";
@@ -12,8 +18,15 @@ import InsightCard from "../../../components/InsightCard";
 
 export default function InsightsScreen() {
   const transactions = useAtomValue(transactionsAtom);
+  const goals = useAtomValue(savingsGoalsAtom);
+  const budgets = useAtomValue(categoryBudgetsAtom);
+  const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
   const insights = useMemo(() => generateInsights(transactions), [transactions]);
   const summary = useMemo(() => summarize(transactions), [transactions]);
+  const coaching = useMemo(
+    () => getFinancialCoaching(transactions, goals, budgets, budgetPrefs),
+    [transactions, goals, budgets, budgetPrefs]
+  );
 
   return (
     <ScrollView
@@ -27,19 +40,38 @@ export default function InsightsScreen() {
         </Text>
       </View>
 
-      <View style={{ gap: spacing.md }}>
+      <View style={styles.coachCard}>
+        <Text style={styles.coachTitle}>Financial coaching</Text>
+        {coaching.goalLine ? (
+          <Text style={styles.coachLine}>{coaching.goalLine}</Text>
+        ) : (
+          <Text style={styles.coachMuted}>
+            Add a savings goal on the dashboard to see pace coaching here.
+          </Text>
+        )}
+        {coaching.budgetLine ? (
+          <Text style={styles.coachLine}>{coaching.budgetLine}</Text>
+        ) : (
+          <Text style={styles.coachMuted}>
+            Set a monthly category budget to unlock spend warnings.
+          </Text>
+        )}
+        <Text style={styles.coachAction}>{coaching.suggestion}</Text>
+      </View>
+
+      <View style={{ gap: space.s16 }}>
         {insights.map((insight) => (
           <InsightCard key={insight.id} insight={insight} />
         ))}
       </View>
 
-      <Text style={[typography.h3, { marginTop: spacing.lg }]}>
+      <Text style={[type.titleSmall, { marginTop: space.s16 }]}>
         Category Breakdown
       </Text>
 
       <View style={styles.breakdown}>
         {summary.byCategory.length === 0 ? (
-          <Text style={typography.bodyMuted}>
+          <Text style={styles.bodyMuted}>
             Log a few expenses to see your breakdown.
           </Text>
         ) : (
@@ -74,24 +106,37 @@ export default function InsightsScreen() {
 }
 
 const styles = StyleSheet.create({
+  bodyMuted: { ...type.body, color: colors.textMuted },
   content: {
-    padding: spacing.lg,
-    gap: spacing.md,
-    paddingBottom: spacing.xxl,
+    padding: space.s16,
+    gap: space.s16,
+    paddingBottom: space.s32,
   },
-  hero: { marginBottom: spacing.sm },
-  heroTitle: { ...typography.h2 },
-  heroSubtitle: { ...typography.bodyMuted, marginTop: spacing.xs },
+  hero: { marginBottom: space.s8 },
+  heroTitle: { ...type.title },
+  heroSubtitle: { ...type.body, color: colors.textSecondary, marginTop: space.s8 },
+  coachCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: space.s16,
+    gap: space.s8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  coachTitle: { ...type.titleSmall, fontSize: 16 },
+  coachLine: { ...type.body, color: colors.text },
+  coachMuted: { ...type.caption, color: colors.textMuted },
+  coachAction: { ...type.bodyMedium, color: colors.primary, marginTop: space.s8 },
   breakdown: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.md,
+    padding: space.s16,
+    gap: space.s16,
   },
-  breakdownItem: { gap: spacing.xs },
+  breakdownItem: { gap: space.s8 },
   breakdownHeader: { flexDirection: "row", justifyContent: "space-between" },
-  breakdownName: { ...typography.body, fontWeight: "600" },
-  breakdownAmount: { ...typography.body, fontWeight: "600" },
+  breakdownName: { ...type.body, fontWeight: "600" },
+  breakdownAmount: { ...type.body, fontWeight: "600" },
   progressBg: {
     height: 6,
     backgroundColor: colors.surfaceAlt,

@@ -1,6 +1,7 @@
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth, useUser } from "@clerk/clerk-expo";
+import { router } from "expo-router";
 
 import { colors, radius, spacing, typography } from "../../../constants/theme";
 
@@ -27,8 +28,18 @@ export default function ProfileScreen() {
   };
 
   const items: MenuItem[] = [
-    { id: "goals", label: "Savings Goals", icon: "flag-outline" },
-    { id: "budgets", label: "Budgets & Alerts", icon: "notifications-outline" },
+    {
+      id: "goals",
+      label: "Savings Goals",
+      icon: "flag-outline",
+      onPress: () => router.push("/goals"),
+    },
+    {
+      id: "budgets",
+      label: "Budgets & Alerts",
+      icon: "notifications-outline",
+      onPress: () => router.push("/budgets"),
+    },
     { id: "categories", label: "Manage Categories", icon: "pricetags-outline" },
     { id: "export", label: "Export Data", icon: "download-outline" },
   ];

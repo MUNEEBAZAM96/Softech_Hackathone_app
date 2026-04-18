@@ -1,12 +1,30 @@
 import { useMemo } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAtomValue } from "jotai";
 import { startOfMonth } from "date-fns";
 import { router } from "expo-router";
 
-import { transactionsAtom } from "../../../atoms";
+import {
+  budgetAlertPreferencesAtom,
+  categoryBudgetsAtom,
+  dismissedBudgetAlertIdsAtom,
+  savingsGoalsAtom,
+  transactionsAtom,
+} from "../../../atoms";
+import BudgetAlertsDashboardCard from "../../../components/budget/BudgetAlertsDashboardCard";
+import GoalProgressDashboardCard from "../../../components/goals/GoalProgressDashboardCard";
+import AppCard from "../../../components/ui/AppCard";
 import { colors, space, type } from "../../../constants/theme";
 import { getCategoryById } from "../../../constants/categories";
+import {
+  filterDashboardBudgetAlerts,
+  formatMonthKey,
+  getBudgetAlertsForMonth,
+} from "../../../services/budgetAlertService";
+import {
+  getPrimaryGoalForDashboard,
+  getSavingsGoalAnalytics,
+} from "../../../services/savingsGoalService";
 import {
   getMonthOverMonthNet,
   sortByDateDesc,
@@ -21,7 +39,6 @@ import DashboardHero from "../../../components/dashboard/DashboardHero";
 import CalendarSectionToggle from "../../../components/dashboard/CalendarSectionToggle";
 import KPIBlock from "../../../components/dashboard/KPIBlock";
 import SectionHeading from "../../../components/dashboard/SectionHeading";
-import AppCard from "../../../components/ui/AppCard";
 import CategoryProgressRow from "../../../components/dashboard/CategoryProgressRow";
 import AITipOfTheDay from "../../../components/dashboard/AITipOfTheDay";
 import InsightCard from "../../../components/InsightCard";
@@ -29,6 +46,10 @@ import TransactionListItem from "../../../components/TransactionListItem";
 
 export default function DashboardScreen() {
   const transactions = useAtomValue(transactionsAtom);
+  const goals = useAtomValue(savingsGoalsAtom);
+  const budgets = useAtomValue(categoryBudgetsAtom);
+  const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
+  const dismissedAlerts = useAtomValue(dismissedBudgetAlertIdsAtom);
 
   const summary = useMemo(() => summarize(transactions), [transactions]);
   const mom = useMemo(() => getMonthOverMonthNet(transactions), [transactions]);
@@ -52,6 +73,44 @@ export default function DashboardScreen() {
     [transactions]
   );
 
+  const alertCtx = useMemo(
+    () => ({
+      getCategoryName: (id: string) =>
+        getCategoryById(id)?.name ?? "Category",
+    }),
+    []
+  );
+
+  const monthKey = formatMonthKey(new Date());
+  const dashboardBudgetAlerts = useMemo(() => {
+    const raw = getBudgetAlertsForMonth(
+      transactions,
+      budgets,
+      budgetPrefs,
+      alertCtx,
+      monthKey
+    );
+    return filterDashboardBudgetAlerts(raw, { includeEarly: false }).filter(
+      (a) => !dismissedAlerts[a.id]
+    );
+  }, [
+    transactions,
+    budgets,
+    budgetPrefs,
+    alertCtx,
+    monthKey,
+    dismissedAlerts,
+  ]);
+
+  const primaryGoal = useMemo(
+    () => getPrimaryGoalForDashboard(goals),
+    [goals]
+  );
+  const goalAnalytics = useMemo(() => {
+    if (!primaryGoal) return null;
+    return getSavingsGoalAnalytics(transactions, primaryGoal, goals);
+  }, [transactions, goals, primaryGoal]);
+
   return (
     <ScrollView
       style={styles.screen}
@@ -66,7 +125,25 @@ export default function DashboardScreen() {
         monthExpenseTotal={monthExpenseTotal}
       />
 
-      
+      <View style={styles.section}>
+        <SectionHeading title="Goal progress" actionHref="/goals" />
+        {goalAnalytics ? (
+          <GoalProgressDashboardCard analytics={goalAnalytics} />
+        ) : (
+          <Pressable onPress={() => router.push("/goals")}>
+            <AppCard>
+              <Text style={styles.muted}>
+                No savings goal yet — tap to create one and track pace.
+              </Text>
+            </AppCard>
+          </Pressable>
+        )}
+      </View>
+
+      <View style={styles.section}>
+        <SectionHeading title="Budget alerts" actionHref="/budgets" />
+        <BudgetAlertsDashboardCard alerts={dashboardBudgetAlerts} />
+      </View>
 
       <View style={styles.section}>
         <SectionHeading title="This period" />
