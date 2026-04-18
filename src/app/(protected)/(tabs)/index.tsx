@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAtomValue } from "jotai";
+import { format, isSameMonth, parseISO, startOfMonth } from "date-fns";
 
 import { transactionsAtom } from "../../../atoms";
 import { colors, space, type } from "../../../constants/theme";
@@ -10,9 +11,19 @@ import {
   sortByDateDesc,
   summarize,
 } from "../../../services/transactionService";
+import {
+  addMonths,
+  buildDailyExpenseTotals,
+  subMonths,
+  sumExpensesInCalendarMonth,
+} from "../../../services/calendarSpend";
 import { generateInsights } from "../../../services/insightsService";
 
 import DashboardHero from "../../../components/dashboard/DashboardHero";
+import CalendarSectionToggle from "../../../components/dashboard/CalendarSectionToggle";
+import MonthDateHeader from "../../../components/dashboard/MonthDateHeader";
+import SpendingCalendar from "../../../components/dashboard/SpendingCalendar";
+import SelectedDayPanel from "../../../components/dashboard/SelectedDayPanel";
 import KPIBlock from "../../../components/dashboard/KPIBlock";
 import SectionHeading from "../../../components/dashboard/SectionHeading";
 import AppCard from "../../../components/ui/AppCard";
@@ -23,6 +34,29 @@ import TransactionListItem from "../../../components/TransactionListItem";
 
 export default function DashboardScreen() {
   const transactions = useAtomValue(transactionsAtom);
+
+  const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
+  const [selectedDayKey, setSelectedDayKey] = useState(() =>
+    format(new Date(), "yyyy-MM-dd")
+  );
+  const [calendarExpanded, setCalendarExpanded] = useState(false);
+
+  const dailyExpenseTotals = useMemo(
+    () => buildDailyExpenseTotals(transactions),
+    [transactions]
+  );
+
+  useEffect(() => {
+    const selected = parseISO(`${selectedDayKey}T12:00:00`);
+    if (!isSameMonth(selected, visibleMonth)) {
+      const today = new Date();
+      if (isSameMonth(today, visibleMonth)) {
+        setSelectedDayKey(format(today, "yyyy-MM-dd"));
+      } else {
+        setSelectedDayKey(format(startOfMonth(visibleMonth), "yyyy-MM-dd"));
+      }
+    }
+  }, [visibleMonth]);
 
   const summary = useMemo(() => summarize(transactions), [transactions]);
   const mom = useMemo(() => getMonthOverMonthNet(transactions), [transactions]);
@@ -40,6 +74,11 @@ export default function DashboardScreen() {
     [summary.byCategory]
   );
 
+  const monthExpenseTotal = useMemo(
+    () => sumExpensesInCalendarMonth(transactions, visibleMonth),
+    [transactions, visibleMonth]
+  );
+
   return (
     <ScrollView
       style={styles.screen}
@@ -50,6 +89,37 @@ export default function DashboardScreen() {
       <Text style={styles.screenSubtitle}>
         Your money at a glance — balance, flow, and focus areas.
       </Text>
+
+      <CalendarSectionToggle
+        expanded={calendarExpanded}
+        onToggle={() => setCalendarExpanded((e) => !e)}
+        visibleMonth={visibleMonth}
+        monthExpenseTotal={monthExpenseTotal}
+      />
+
+      {calendarExpanded && (
+        <View style={styles.section}>
+          <MonthDateHeader
+            visibleMonth={visibleMonth}
+            onPrevMonth={() => setVisibleMonth((m) => subMonths(m, 1))}
+            onNextMonth={() => setVisibleMonth((m) => addMonths(m, 1))}
+          />
+          <AppCard>
+            <SpendingCalendar
+              visibleMonth={visibleMonth}
+              dailyExpenseTotals={dailyExpenseTotals}
+              selectedDayKey={selectedDayKey}
+              onSelectDay={setSelectedDayKey}
+            />
+            <View style={styles.divider} />
+            <SelectedDayPanel
+              dayKey={selectedDayKey}
+              transactions={transactions}
+              dailyExpenseTotals={dailyExpenseTotals}
+            />
+          </AppCard>
+        </View>
+      )}
 
       <DashboardHero totalBalance={summary.balance} mom={mom} />
 
@@ -81,7 +151,9 @@ export default function DashboardScreen() {
         <SectionHeading title="Spending by category" />
         <AppCard>
           {topCategories.length === 0 ? (
-            <Text style={styles.muted}>No expenses yet — add one to see breakdown.</Text>
+            <Text style={styles.muted}>
+              No expenses yet — add one to see breakdown.
+            </Text>
           ) : (
             <View style={styles.categoryStack}>
               {topCategories.map((row) => {
@@ -152,6 +224,11 @@ const styles = StyleSheet.create({
   },
   section: {
     gap: space.s8,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: space.s16,
   },
   kpiRow: {
     flexDirection: "row",
