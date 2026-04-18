@@ -14,7 +14,9 @@
       "backgroundColor": "#0F172A"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "deploymentTarget": "15.4",
+      "bundleIdentifier": "com.anonymous.budgetiq-ai"
     },
     "android": {
       "adaptiveIcon": {

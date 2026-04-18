@@ -289,6 +289,8 @@ export default function DashboardScreen() {
         monthExpenseTotal={monthExpenseTotal}
       />
 
+     
+
       <View style={styles.section}>
         <SectionHeading title="At a glance" />
         <View style={styles.trackRow}>
@@ -308,6 +310,15 @@ export default function DashboardScreen() {
             accessibilityLabel={budgetsAccessibilityLabel}
           />
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <AITipOfTheDay
+          message={tipText}
+          loading={tipLoading}
+          errorMessage={tipError}
+          onRequestNewTip={() => void loadTip("new")}
+        />
       </View>
 
       <View style={styles.section}>
@@ -358,15 +369,6 @@ export default function DashboardScreen() {
             </View>
           )}
         </AppCard>
-      </View>
-
-      <View style={styles.section}>
-        <AITipOfTheDay
-          message={tipText}
-          loading={tipLoading}
-          errorMessage={tipError}
-          onRequestNewTip={() => void loadTip("new")}
-        />
       </View>
 
       <View style={styles.section}>
