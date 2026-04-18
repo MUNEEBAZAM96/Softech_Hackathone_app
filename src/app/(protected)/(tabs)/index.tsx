@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -18,8 +17,6 @@ import {
   savingsGoalsAtom,
   transactionsAtom,
 } from "../../../atoms";
-import BudgetAlertsDashboardCard from "../../../components/budget/BudgetAlertsDashboardCard";
-import GoalProgressDashboardCard from "../../../components/goals/GoalProgressDashboardCard";
 import AppCard from "../../../components/ui/AppCard";
 import { getCategoryById } from "../../../constants/categories";
 import {
@@ -54,6 +51,10 @@ import KPIBlock from "../../../components/dashboard/KPIBlock";
 import SectionHeading from "../../../components/dashboard/SectionHeading";
 import CategoryProgressRow from "../../../components/dashboard/CategoryProgressRow";
 import AITipOfTheDay from "../../../components/dashboard/AITipOfTheDay";
+import BudgetTrackCard from "../../../components/dashboard/BudgetTrackCard";
+import GoalsTrackCard, {
+  paceLabel,
+} from "../../../components/dashboard/GoalsTrackCard";
 import InsightCard from "../../../components/InsightCard";
 import TransactionListItem from "../../../components/TransactionListItem";
 
@@ -95,6 +96,11 @@ export default function DashboardScreen() {
         muted: {
           ...type.body,
           color: colors.textMuted,
+        },
+        trackRow: {
+          flexDirection: "row",
+          gap: space.s8,
+          alignItems: "stretch",
         },
       }),
     [colors, type, space]
@@ -159,6 +165,43 @@ export default function DashboardScreen() {
     if (!primaryGoal) return null;
     return getSavingsGoalAnalytics(transactions, primaryGoal, goals);
   }, [transactions, goals, primaryGoal]);
+
+  const goalFooterLine = useMemo(() => {
+    if (!goalAnalytics) {
+      return "Tap to create your first goal";
+    }
+    const titleShort =
+      goalAnalytics.title.length > 24
+        ? `${goalAnalytics.title.slice(0, 23)}…`
+        : goalAnalytics.title;
+    return `${titleShort} · ${paceLabel(goalAnalytics.pace)}`;
+  }, [goalAnalytics]);
+
+  const goalsAccessibilityLabel = useMemo(() => {
+    if (!goalAnalytics) {
+      return "Goals. No goal set yet. Opens goals.";
+    }
+    const pct = Math.round(goalAnalytics.progressPct);
+    return `Goals. ${pct} percent. ${paceLabel(goalAnalytics.pace)}. ${goalAnalytics.title}. Opens goals.`;
+  }, [goalAnalytics]);
+
+  const budgetSeverityCounts = useMemo(() => {
+    let warningOrEarly = 0;
+    let exceeded = 0;
+    for (const a of dashboardBudgetAlerts) {
+      if (a.level === "exceeded") exceeded += 1;
+      else if (a.level === "warning" || a.level === "early") warningOrEarly += 1;
+    }
+    return { warningOrEarly, exceeded };
+  }, [dashboardBudgetAlerts]);
+
+  const budgetsAccessibilityLabel = useMemo(() => {
+    const n = dashboardBudgetAlerts.length;
+    if (n === 0) {
+      return "Budgets. All clear. No active alerts. Opens budgets.";
+    }
+    return `Budgets. ${n} active alerts. Opens budgets.`;
+  }, [dashboardBudgetAlerts.length]);
 
   const getCategoryName = useCallback(
     (id: string) => getCategoryById(id)?.name ?? "Other",
@@ -247,23 +290,24 @@ export default function DashboardScreen() {
       />
 
       <View style={styles.section}>
-        <SectionHeading title="Goal progress" actionHref="/goals" />
-        {goalAnalytics ? (
-          <GoalProgressDashboardCard analytics={goalAnalytics} />
-        ) : (
-          <Pressable onPress={() => router.push("/goals")}>
-            <AppCard>
-              <Text style={styles.muted}>
-                No savings goal yet — tap to create one and track pace.
-              </Text>
-            </AppCard>
-          </Pressable>
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <SectionHeading title="Budget alerts" actionHref="/budgets" />
-        <BudgetAlertsDashboardCard alerts={dashboardBudgetAlerts} />
+        <SectionHeading title="At a glance" />
+        <View style={styles.trackRow}>
+          <GoalsTrackCard
+            progressPct={
+              goalAnalytics ? goalAnalytics.progressPct : null
+            }
+            footerLine={goalFooterLine}
+            onPress={() => router.push("/goals")}
+            accessibilityLabel={goalsAccessibilityLabel}
+          />
+          <BudgetTrackCard
+            alertCount={dashboardBudgetAlerts.length}
+            warningOrEarlyCount={budgetSeverityCounts.warningOrEarly}
+            exceededCount={budgetSeverityCounts.exceeded}
+            onPress={() => router.push("/budgets")}
+            accessibilityLabel={budgetsAccessibilityLabel}
+          />
+        </View>
       </View>
 
       <View style={styles.section}>
