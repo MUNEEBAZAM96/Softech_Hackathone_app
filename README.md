@@ -1,7 +1,7 @@
 # Softech_Hackathone_app
 # 💰 BudgetIQ AI – Smart Finance Tracker (Hackathon Project)
 
-![BudgetIQ AI Thumbnail](https://i.ytimg.com/vi/dl74XgJYK1A/maxresdefault.jpg)
+
 
 ---
 
