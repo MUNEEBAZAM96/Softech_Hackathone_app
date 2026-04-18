@@ -1,13 +1,10 @@
 import { Redirect, Stack } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
-import { colors } from "../../constants/theme";
 
-export default function ProtectedLayout() {
-  const { isSignedIn } = useAuth();
+import { useAppTheme } from "../../providers/ThemeProvider";
 
-  if (!isSignedIn) {
-    return <Redirect href="/signIn" />;
-  }
+function ProtectedStack() {
+  const { colors } = useAppTheme();
 
   return (
     <Stack
@@ -35,4 +32,14 @@ export default function ProtectedLayout() {
       />
     </Stack>
   );
+}
+
+export default function ProtectedLayout() {
+  const { isSignedIn } = useAuth();
+
+  if (!isSignedIn) {
+    return <Redirect href="/signIn" />;
+  }
+
+  return <ProtectedStack />;
 }

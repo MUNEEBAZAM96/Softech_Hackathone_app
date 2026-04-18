@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, shadow, space, type } from "../../constants/theme";
+
+import { useAppTheme } from "../../providers/ThemeProvider";
 import { formatCurrency } from "../../utils/format";
 import type { MonthOverMonthResult } from "../../services/transactionService";
 
@@ -10,7 +12,10 @@ type Props = {
   mom: MonthOverMonthResult;
 };
 
-function formatMomLine(mom: MonthOverMonthResult): { text: string; tone: "success" | "danger" | "muted" } {
+function formatMomLine(mom: MonthOverMonthResult): {
+  text: string;
+  tone: "success" | "danger" | "muted";
+} {
   const { percentChangeVsPrevious, currentMonthNet, previousMonthNet } = mom;
   if (percentChangeVsPrevious === null) {
     if (previousMonthNet === 0 && currentMonthNet === 0) {
@@ -27,6 +32,7 @@ function formatMomLine(mom: MonthOverMonthResult): { text: string; tone: "succes
 }
 
 export default function DashboardHero({ totalBalance, mom }: Props) {
+  const { colors, type, shadow, space, radius } = useAppTheme();
   const ctx = formatMomLine(mom);
   const toneColor =
     ctx.tone === "success"
@@ -34,6 +40,55 @@ export default function DashboardHero({ totalBalance, mom }: Props) {
       : ctx.tone === "danger"
         ? colors.danger
         : "rgba(255,255,255,0.75)";
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        hero: {
+          backgroundColor: colors.primary,
+          borderRadius: radius.xl,
+          padding: space.s24,
+          gap: space.s8,
+        },
+        kicker: {
+          ...type.caption,
+          color: "rgba(255,255,255,0.85)",
+          textTransform: "uppercase",
+          letterSpacing: 0.6,
+        },
+        display: {
+          ...type.displayHero,
+          marginTop: space.s8,
+        },
+        contextRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: space.s8,
+          marginTop: space.s8,
+        },
+        context: {
+          ...type.body,
+          flex: 1,
+          color: "rgba(255,255,255,0.9)",
+          fontWeight: "500",
+        },
+        cta: {
+          marginTop: space.s16,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: space.s8,
+          backgroundColor: colors.surface,
+          paddingVertical: space.s16,
+          borderRadius: radius.md,
+        },
+        ctaText: {
+          ...type.bodyMedium,
+          color: colors.primary,
+        },
+      }),
+    [colors, type, space, radius]
+  );
 
   return (
     <View style={[styles.hero, shadow.hero]}>
@@ -56,48 +111,3 @@ export default function DashboardHero({ totalBalance, mom }: Props) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  hero: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.xl,
-    padding: space.s24,
-    gap: space.s8,
-  },
-  kicker: {
-    ...type.caption,
-    color: "rgba(255,255,255,0.85)",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-  display: {
-    ...type.displayHero,
-    marginTop: space.s8,
-  },
-  contextRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.s8,
-    marginTop: space.s8,
-  },
-  context: {
-    ...type.body,
-    flex: 1,
-    color: "rgba(255,255,255,0.9)",
-    fontWeight: "500",
-  },
-  cta: {
-    marginTop: space.s16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: space.s8,
-    backgroundColor: colors.surface,
-    paddingVertical: space.s16,
-    borderRadius: radius.md,
-  },
-  ctaText: {
-    ...type.bodyMedium,
-    color: colors.primary,
-  },
-});

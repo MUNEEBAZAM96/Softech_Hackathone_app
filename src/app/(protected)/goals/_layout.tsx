@@ -1,8 +1,10 @@
 import { Stack } from "expo-router";
 
-import { colors } from "../../../constants/theme";
+import { useAppTheme } from "../../../providers/ThemeProvider";
 
 export default function GoalsLayout() {
+  const { colors } = useAppTheme();
+
   return (
     <Stack
       screenOptions={{

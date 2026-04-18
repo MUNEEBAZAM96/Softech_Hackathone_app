@@ -8,15 +8,16 @@ import {
   savingsGoalsAtom,
   transactionsAtom,
 } from "../../../atoms";
-import { colors, radius, space, type } from "../../../constants/theme";
 import { generateInsights } from "../../../services/insightsService";
 import { getFinancialCoaching } from "../../../services/coachingService";
 import { summarize } from "../../../services/transactionService";
 import { getCategoryById } from "../../../constants/categories";
 import { formatCurrency } from "../../../utils/format";
+import { useAppTheme } from "../../../providers/ThemeProvider";
 import InsightCard from "../../../components/InsightCard";
 
 export default function InsightsScreen() {
+  const { colors, type, space, radius } = useAppTheme();
   const transactions = useAtomValue(transactionsAtom);
   const goals = useAtomValue(savingsGoalsAtom);
   const budgets = useAtomValue(categoryBudgetsAtom);
@@ -28,8 +29,65 @@ export default function InsightsScreen() {
     [transactions, goals, budgets, budgetPrefs]
   );
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        bodyMuted: { ...type.body, color: colors.textMuted },
+        content: {
+          padding: space.s16,
+          gap: space.s16,
+          paddingBottom: space.s32,
+        },
+        hero: { marginBottom: space.s8 },
+        heroTitle: { ...type.title },
+        heroSubtitle: {
+          ...type.body,
+          color: colors.textSecondary,
+          marginTop: space.s8,
+        },
+        coachCard: {
+          backgroundColor: colors.surface,
+          borderRadius: radius.lg,
+          padding: space.s16,
+          gap: space.s8,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        coachTitle: { ...type.titleSmall, fontSize: 16 },
+        coachLine: { ...type.body, color: colors.text },
+        coachMuted: { ...type.caption, color: colors.textMuted },
+        coachAction: {
+          ...type.bodyMedium,
+          color: colors.primary,
+          marginTop: space.s8,
+        },
+        breakdown: {
+          backgroundColor: colors.surface,
+          borderRadius: radius.lg,
+          padding: space.s16,
+          gap: space.s16,
+        },
+        breakdownItem: { gap: space.s8 },
+        breakdownHeader: {
+          flexDirection: "row",
+          justifyContent: "space-between",
+        },
+        breakdownName: { ...type.body, fontWeight: "600" },
+        breakdownAmount: { ...type.body, fontWeight: "600" },
+        progressBg: {
+          height: 6,
+          backgroundColor: colors.surfaceAlt,
+          borderRadius: radius.pill,
+          overflow: "hidden",
+        },
+        progressFg: { height: "100%", borderRadius: radius.pill },
+      }),
+    [colors, type, space, radius]
+  );
+
   return (
     <ScrollView
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
@@ -104,44 +162,3 @@ export default function InsightsScreen() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  bodyMuted: { ...type.body, color: colors.textMuted },
-  content: {
-    padding: space.s16,
-    gap: space.s16,
-    paddingBottom: space.s32,
-  },
-  hero: { marginBottom: space.s8 },
-  heroTitle: { ...type.title },
-  heroSubtitle: { ...type.body, color: colors.textSecondary, marginTop: space.s8 },
-  coachCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: space.s16,
-    gap: space.s8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  coachTitle: { ...type.titleSmall, fontSize: 16 },
-  coachLine: { ...type.body, color: colors.text },
-  coachMuted: { ...type.caption, color: colors.textMuted },
-  coachAction: { ...type.bodyMedium, color: colors.primary, marginTop: space.s8 },
-  breakdown: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: space.s16,
-    gap: space.s16,
-  },
-  breakdownItem: { gap: space.s8 },
-  breakdownHeader: { flexDirection: "row", justifyContent: "space-between" },
-  breakdownName: { ...type.body, fontWeight: "600" },
-  breakdownAmount: { ...type.body, fontWeight: "600" },
-  progressBg: {
-    height: 6,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.pill,
-    overflow: "hidden",
-  },
-  progressFg: { height: "100%", borderRadius: radius.pill },
-});

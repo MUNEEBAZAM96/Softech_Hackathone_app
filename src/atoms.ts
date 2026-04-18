@@ -1,9 +1,13 @@
 import { atom } from "jotai";
+import { atomWithStorage, createJSONStorage } from "jotai/utils";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import type {
   BudgetAlertPreferences,
   Category,
   CategoryBudget,
   SavingsGoal,
+  ThemeMode,
   Transaction,
 } from "./types";
 
@@ -122,3 +126,12 @@ export const dismissedBudgetAlertIdsAtom = atom<Record<string, true>>({});
 export const budgetAlertPreferencesAtom = atom<BudgetAlertPreferences>({
   showEarlyWarningAt70: true,
 });
+
+const themeStorage = createJSONStorage<ThemeMode>(() => AsyncStorage);
+
+/** User preference: `system` follows OS appearance. */
+export const themeModeAtom = atomWithStorage<ThemeMode>(
+  "budgetiq-theme-mode",
+  "system",
+  themeStorage
+);

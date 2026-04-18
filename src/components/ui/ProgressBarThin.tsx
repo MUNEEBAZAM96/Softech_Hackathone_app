@@ -1,5 +1,6 @@
 import { StyleSheet, View } from "react-native";
-import { colors, radius } from "../../constants/theme";
+
+import { useAppTheme } from "../../providers/ThemeProvider";
 
 type Props = {
   progress: number;
@@ -14,13 +15,15 @@ export default function ProgressBarThin({
   progress,
   max = 100,
   color,
-  trackColor = colors.surfaceAlt,
+  trackColor,
   height = 8,
 }: Props) {
+  const { colors, radius } = useAppTheme();
+  const track = trackColor ?? colors.surfaceAlt;
   const p = max === 1 ? progress * 100 : progress;
   const pct = Math.min(100, Math.max(0, p));
   return (
-    <View style={[styles.track, { height, backgroundColor: trackColor }]}>
+    <View style={[styles.track, { height, backgroundColor: track }]}>
       <View
         style={[styles.fill, { width: `${pct}%`, backgroundColor: color }]}
       />
@@ -30,12 +33,12 @@ export default function ProgressBarThin({
 
 const styles = StyleSheet.create({
   track: {
-    borderRadius: radius.pill,
+    borderRadius: 999,
     overflow: "hidden",
     width: "100%",
   },
   fill: {
     height: "100%",
-    borderRadius: radius.pill,
+    borderRadius: 999,
   },
 });

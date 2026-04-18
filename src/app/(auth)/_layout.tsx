@@ -1,13 +1,10 @@
 import { Stack, Redirect } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
-import { colors } from "../../constants/theme";
 
-export default function AuthLayout() {
-  const { isSignedIn } = useAuth();
+import { useAppTheme } from "../../providers/ThemeProvider";
 
-  if (isSignedIn) {
-    return <Redirect href="/" />;
-  }
+function AuthStack() {
+  const { colors } = useAppTheme();
 
   return (
     <Stack
@@ -20,4 +17,14 @@ export default function AuthLayout() {
       <Stack.Screen name="signUp" />
     </Stack>
   );
+}
+
+export default function AuthLayout() {
+  const { isSignedIn } = useAuth();
+
+  if (isSignedIn) {
+    return <Redirect href="/" />;
+  }
+
+  return <AuthStack />;
 }

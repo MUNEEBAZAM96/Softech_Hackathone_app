@@ -14,7 +14,6 @@ import {
 import BudgetAlertsDashboardCard from "../../../components/budget/BudgetAlertsDashboardCard";
 import GoalProgressDashboardCard from "../../../components/goals/GoalProgressDashboardCard";
 import AppCard from "../../../components/ui/AppCard";
-import { colors, space, type } from "../../../constants/theme";
 import { getCategoryById } from "../../../constants/categories";
 import {
   filterDashboardBudgetAlerts,
@@ -34,6 +33,7 @@ import {
   sumExpensesInCalendarMonth,
 } from "../../../services/calendarSpend";
 import { generateInsights } from "../../../services/insightsService";
+import { useAppTheme } from "../../../providers/ThemeProvider";
 
 import DashboardHero from "../../../components/dashboard/DashboardHero";
 import CalendarSectionToggle from "../../../components/dashboard/CalendarSectionToggle";
@@ -45,11 +45,47 @@ import InsightCard from "../../../components/InsightCard";
 import TransactionListItem from "../../../components/TransactionListItem";
 
 export default function DashboardScreen() {
+  const { colors, type, space } = useAppTheme();
   const transactions = useAtomValue(transactionsAtom);
   const goals = useAtomValue(savingsGoalsAtom);
   const budgets = useAtomValue(categoryBudgetsAtom);
   const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
   const dismissedAlerts = useAtomValue(dismissedBudgetAlertIdsAtom);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        screen: {
+          flex: 1,
+          backgroundColor: colors.background,
+        },
+        content: {
+          paddingHorizontal: space.s16,
+          paddingTop: space.s16,
+          paddingBottom: 112,
+          gap: space.s24,
+        },
+        section: {
+          gap: space.s8,
+        },
+        kpiRow: {
+          flexDirection: "row",
+          gap: space.s8,
+          flexWrap: "wrap",
+        },
+        categoryStack: {
+          gap: space.s16,
+        },
+        listStack: {
+          gap: space.s8,
+        },
+        muted: {
+          ...type.body,
+          color: colors.textMuted,
+        },
+      }),
+    [colors, type, space]
+  );
 
   const summary = useMemo(() => summarize(transactions), [transactions]);
   const mom = useMemo(() => getMonthOverMonthNet(transactions), [transactions]);
@@ -117,7 +153,6 @@ export default function DashboardScreen() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-     
       <DashboardHero totalBalance={summary.balance} mom={mom} />
       <CalendarSectionToggle
         onPress={() => router.push("/spending-calendar")}
@@ -221,45 +256,3 @@ export default function DashboardScreen() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    paddingHorizontal: space.s16,
-    paddingTop: space.s16,
-    paddingBottom: 112,
-    gap: space.s24,
-  },
-  screenTitle: {
-    ...type.display,
-    fontSize: 28,
-    lineHeight: 34,
-  },
-  screenSubtitle: {
-    ...type.body,
-    color: colors.textSecondary,
-    marginTop: -space.s8,
-    marginBottom: space.s8,
-  },
-  section: {
-    gap: space.s8,
-  },
-  kpiRow: {
-    flexDirection: "row",
-    gap: space.s8,
-    flexWrap: "wrap",
-  },
-  categoryStack: {
-    gap: space.s16,
-  },
-  listStack: {
-    gap: space.s8,
-  },
-  muted: {
-    ...type.body,
-    color: colors.textMuted,
-  },
-});

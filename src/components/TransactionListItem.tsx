@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Link } from "expo-router";
-import { colors, radius, space, type } from "../constants/theme";
+
+import { useAppTheme } from "../providers/ThemeProvider";
 import { getCategoryById } from "../constants/categories";
 import { formatCurrency, formatDate } from "../utils/format";
 import type { Transaction } from "../types";
@@ -11,10 +13,51 @@ type Props = {
 };
 
 export default function TransactionListItem({ transaction }: Props) {
+  const { colors, type, space, radius } = useAppTheme();
   const category = getCategoryById(transaction.categoryId);
   const isIncome = transaction.kind === "income";
   const amountColor = isIncome ? colors.success : colors.danger;
   const amountPrefix = isIncome ? "+" : "-";
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        row: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: space.s16,
+          backgroundColor: colors.surface,
+          paddingHorizontal: space.s16,
+          paddingVertical: space.s16,
+          borderRadius: radius.lg,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        iconWrap: {
+          width: 42,
+          height: 42,
+          borderRadius: radius.pill,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        title: {
+          ...type.bodyMedium,
+        },
+        note: {
+          ...type.caption,
+          marginTop: space.s8,
+        },
+        date: {
+          ...type.caption,
+          marginTop: space.s8,
+        },
+        amount: {
+          fontSize: 15,
+          fontWeight: "700",
+        },
+      }),
+    [colors, type, space, radius]
+  );
 
   return (
     <Link href={`/transaction/${transaction.id}`} asChild>
@@ -26,7 +69,10 @@ export default function TransactionListItem({ transaction }: Props) {
           ]}
         >
           <Ionicons
-            name={(category?.icon as keyof typeof Ionicons.glyphMap) ?? "pricetag-outline"}
+            name={
+              (category?.icon as keyof typeof Ionicons.glyphMap) ??
+              "pricetag-outline"
+            }
             size={20}
             color={category?.color ?? colors.primary}
           />
@@ -52,39 +98,3 @@ export default function TransactionListItem({ transaction }: Props) {
     </Link>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.s16,
-    backgroundColor: colors.surface,
-    paddingHorizontal: space.s16,
-    paddingVertical: space.s16,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  iconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: radius.pill,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  title: {
-    ...type.bodyMedium,
-  },
-  note: {
-    ...type.caption,
-    marginTop: space.s8,
-  },
-  date: {
-    ...type.caption,
-    marginTop: space.s8,
-  },
-  amount: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-});

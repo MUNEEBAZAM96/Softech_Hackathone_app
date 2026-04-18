@@ -1,12 +1,15 @@
+import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 
 import type { SavingsGoalAnalytics } from "../../types";
-import { colors, radius, shadow, space, type } from "../../constants/theme";
+import type { ThemeColors } from "../../constants/theme";
+import { useAppTheme } from "../../providers/ThemeProvider";
 import { formatCurrency, formatDate } from "../../utils/format";
 import ProgressBarThin from "../ui/ProgressBarThin";
 
 function paceColor(
+  colors: ThemeColors,
   pace: SavingsGoalAnalytics["pace"]
 ): { bar: string; accent: string } {
   if (pace === "completed" || pace === "ahead" || pace === "on_track") {
@@ -23,8 +26,53 @@ type Props = {
 };
 
 export default function GoalProgressDashboardCard({ analytics }: Props) {
-  const { bar, accent } = paceColor(analytics.pace);
+  const { colors, type, shadow, space, radius } = useAppTheme();
+  const { bar, accent } = paceColor(colors, analytics.pace);
   const pctRounded = Math.round(analytics.progressPct);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        card: {
+          backgroundColor: colors.surface,
+          borderRadius: radius.lg,
+          padding: space.s16,
+          gap: space.s16,
+          ...shadow.card,
+        },
+        cardPressed: { opacity: 0.92 },
+        topRow: {
+          flexDirection: "row",
+          gap: space.s16,
+          alignItems: "center",
+        },
+        ring: {
+          width: 88,
+          height: 88,
+          borderRadius: 44,
+          borderWidth: 6,
+          borderColor: colors.border,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.surfaceAlt,
+        },
+        ringPct: {
+          ...type.display,
+          fontSize: 26,
+          lineHeight: 30,
+        },
+        ringLabel: {
+          ...type.caption,
+          marginTop: -space.s8 / 2,
+        },
+        copy: { flex: 1, gap: space.s8 / 2 },
+        title: { ...type.titleSmall, fontSize: 16 },
+        amountLine: { ...type.bodyMedium, fontSize: 14 },
+        meta: { ...type.caption, color: colors.textSecondary },
+        coach: { ...type.caption, color: colors.textSecondary },
+      }),
+    [colors, type, shadow, space, radius]
+  );
 
   return (
     <Pressable
@@ -35,7 +83,7 @@ export default function GoalProgressDashboardCard({ analytics }: Props) {
       ]}
     >
       <View style={styles.topRow}>
-        <View style={[styles.ring, { borderColor: colors.border }]}>
+        <View style={styles.ring}>
           <Text style={[styles.ringPct, { color: accent }]}>{pctRounded}%</Text>
           <Text style={styles.ringLabel}>saved</Text>
         </View>
@@ -62,42 +110,3 @@ export default function GoalProgressDashboardCard({ analytics }: Props) {
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: space.s16,
-    gap: space.s16,
-    ...shadow.card,
-  },
-  cardPressed: { opacity: 0.92 },
-  topRow: {
-    flexDirection: "row",
-    gap: space.s16,
-    alignItems: "center",
-  },
-  ring: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    borderWidth: 6,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surfaceAlt,
-  },
-  ringPct: {
-    ...type.display,
-    fontSize: 26,
-    lineHeight: 30,
-  },
-  ringLabel: {
-    ...type.caption,
-    marginTop: -space.s8 / 2,
-  },
-  copy: { flex: 1, gap: space.s8 / 2 },
-  title: { ...type.titleSmall, fontSize: 16 },
-  amountLine: { ...type.bodyMedium, fontSize: 14 },
-  meta: { ...type.caption, color: colors.textSecondary },
-  coach: { ...type.caption, color: colors.textSecondary },
-});

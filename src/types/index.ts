@@ -100,3 +100,5 @@ export type BudgetAlertPreferences = {
   /** When true, include 70%+ “early” alerts when enough month remains. */
   showEarlyWarningAt70: boolean;
 };
+
+export type ThemeMode = "system" | "light" | "dark";

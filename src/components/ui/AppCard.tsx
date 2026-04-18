@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
-import { StyleSheet, View, ViewStyle } from "react-native";
-import { colors, radius, shadow, space } from "../../constants/theme";
+import { View, ViewStyle } from "react-native";
+
+import { useAppTheme } from "../../providers/ThemeProvider";
 
 type AppCardProps = {
   children: ReactNode;
@@ -14,15 +15,21 @@ export default function AppCard({
   style,
   elevated = true,
 }: AppCardProps) {
+  const { colors, shadow, radius, space } = useAppTheme();
+
   return (
-    <View style={[styles.base, elevated && shadow.card, style]}>{children}</View>
+    <View
+      style={[
+        {
+          backgroundColor: colors.surface,
+          borderRadius: radius.lg,
+          padding: space.s16,
+        },
+        elevated && shadow.card,
+        style,
+      ]}
+    >
+      {children}
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: space.s16,
-  },
-});
