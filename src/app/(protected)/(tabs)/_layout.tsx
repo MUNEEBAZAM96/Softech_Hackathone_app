@@ -1,6 +1,6 @@
-import { Tabs } from "expo-router";
+import { router, Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { View, TouchableOpacity, StyleSheet } from "react-native";
+import { View, TouchableOpacity, StyleSheet, Pressable } from "react-native";
 import { colors, space } from "../../../constants/theme";
 
 const HIDDEN_TAB_NAMES = new Set(["spending-calendar"]);
@@ -147,12 +147,17 @@ export default function TabLayout() {
       <Tabs.Screen name="insights" options={{ title: "Insights" }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
       <Tabs.Screen
-        name="spending-calendar"
-        options={{
-          title: "Spending calendar",
-          href: null,
-        }}
-      />
+  name="spending-calendar"
+  options={{
+    title: "Spending calendar",
+    href: null,
+    headerLeft: () => (
+      <Pressable onPress={() => router.replace("/")}>
+        <Ionicons name="chevron-back" size={22} color={colors.primary} />
+      </Pressable>
+    ),
+  }}
+/>
     </Tabs>
   );
 }

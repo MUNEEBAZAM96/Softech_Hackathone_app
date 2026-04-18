@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { format, parseISO } from "date-fns";
-import { colors, space, type } from "../../constants/theme";
+import { colors, radius, space, type } from "../../constants/theme";
 import { formatCurrency } from "../../utils/format";
 import type { Transaction } from "../../types";
 import {
@@ -27,30 +28,52 @@ export default function SelectedDayPanel({
   dailyExpenseTotals,
 }: Props) {
   const label = format(parseISO(`${dayKey}T12:00:00`), "EEEE, MMM d, yyyy");
+  const shortLabel = format(parseISO(`${dayKey}T12:00:00`), "MMM d, yyyy");
   const expenseTotal = getExpenseTotalForDayKey(dailyExpenseTotals, dayKey);
   const dayTx = sortDayTransactions(getTransactionsOnLocalDay(transactions, dayKey));
   const expenseCount = dayTx.filter((t) => t.kind === "expense").length;
+  const incomeCount = dayTx.filter((t) => t.kind === "income").length;
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.header}>
-        <Text style={styles.dateTitle}>{label}</Text>
-        <View style={styles.statsRow}>
-          <Text style={styles.statLabel}>Spent</Text>
-          <Text style={styles.statExpense}>{formatCurrency(expenseTotal)}</Text>
+      <View style={styles.headerCard}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerTitles}>
+            <Text style={styles.dateShort}>{shortLabel}</Text>
+            <Text style={styles.dateLong}>{label}</Text>
+          </View>
+          <View style={styles.spentBlock}>
+            <Text style={styles.spentLabel}>Spent</Text>
+            <Text style={styles.spentValue}>{formatCurrency(expenseTotal)}</Text>
+          </View>
         </View>
-        {expenseCount > 0 && (
-          <Text style={styles.count}>
-            {expenseCount} expense{expenseCount === 1 ? "" : "s"}
-          </Text>
-        )}
+
+        <View style={styles.chips}>
+          <View style={styles.chip}>
+            <Ionicons name="receipt-outline" size={14} color={colors.primary} />
+            <Text style={styles.chipText}>{dayTx.length} total</Text>
+          </View>
+          <View style={styles.chip}>
+            <Ionicons name="trending-down" size={14} color={colors.danger} />
+            <Text style={styles.chipText}>{expenseCount} expenses</Text>
+          </View>
+          {incomeCount > 0 && (
+            <View style={styles.chip}>
+              <Ionicons name="trending-up" size={14} color={colors.success} />
+              <Text style={styles.chipText}>{incomeCount} income</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {dayTx.length === 0 ? (
         <View style={styles.empty}>
+          <View style={styles.emptyIcon}>
+            <Ionicons name="wallet-outline" size={32} color={colors.textMuted} />
+          </View>
           <Text style={styles.emptyTitle}>No activity</Text>
           <Text style={styles.emptyText}>
-            Nothing logged on this day. Add a transaction to see it here.
+            Nothing logged on this day. Add a transaction from the + tab.
           </Text>
         </View>
       ) : (
@@ -68,30 +91,61 @@ const styles = StyleSheet.create({
   wrap: {
     gap: space.s16,
   },
-  header: {
+  headerCard: {
+    gap: space.s16,
+  },
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: space.s16,
+  },
+  headerTitles: {
+    flex: 1,
     gap: space.s8,
   },
-  dateTitle: {
+  dateShort: {
     ...type.titleSmall,
     fontSize: 16,
   },
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: space.s8,
+  dateLong: {
+    ...type.caption,
+    color: colors.textSecondary,
   },
-  statLabel: {
+  spentBlock: {
+    alignItems: "flex-end",
+  },
+  spentLabel: {
     ...type.caption,
     textTransform: "uppercase",
     letterSpacing: 0.5,
+    color: colors.textMuted,
   },
-  statExpense: {
+  spentValue: {
     ...type.title,
-    fontSize: 18,
+    fontSize: 22,
     color: colors.danger,
+    marginTop: space.s8,
   },
-  count: {
-    ...type.caption,
+  chips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: space.s8,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: space.s16,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  chipText: {
+    ...type.captionBold,
+    fontSize: 11,
     color: colors.textSecondary,
   },
   list: {
@@ -101,6 +155,15 @@ const styles = StyleSheet.create({
     paddingVertical: space.s24,
     alignItems: "center",
     gap: space.s8,
+    marginTop: space.s8,
+  },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: "center",
+    justifyContent: "center",
   },
   emptyTitle: {
     ...type.bodyMedium,
@@ -111,5 +174,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: space.s16,
     lineHeight: 18,
+    color: colors.textSecondary,
   },
 });

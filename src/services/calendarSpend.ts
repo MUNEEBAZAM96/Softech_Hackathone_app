@@ -10,6 +10,17 @@ import {
   startOfWeek,
   subMonths,
 } from "date-fns";
+
+export type MonthExpenseSummary = {
+  total: number;
+  expenseTransactionCount: number;
+  /** Calendar days in month (28–31) — used for avg daily denominator */
+  daysInMonth: number;
+  avgDailySpend: number;
+  prevMonthTotal: number;
+  /** null if not comparable */
+  percentChangeVsPrevious: number | null;
+};
 import type { Transaction } from "../types";
 
 export { addMonths, subMonths, isSameMonth };
@@ -74,6 +85,52 @@ export function sumExpensesInCalendarMonth(
     if (d >= start && d <= end) sum += t.amount;
   }
   return sum;
+}
+
+/** Premium summary row: totals, counts, avg/day (÷ days in month), vs previous month %. */
+export function getMonthExpenseSummary(
+  transactions: Transaction[],
+  monthAnchor: Date
+): MonthExpenseSummary {
+  const start = startOfMonth(monthAnchor);
+  const end = endOfMonth(monthAnchor);
+  const daysInMonth = eachDayOfInterval({ start, end }).length;
+
+  const prevMonth = subMonths(monthAnchor, 1);
+  const prevStart = startOfMonth(prevMonth);
+  const prevEnd = endOfMonth(prevMonth);
+
+  let total = 0;
+  let expenseTransactionCount = 0;
+  for (const t of transactions) {
+    if (t.kind !== "expense") continue;
+    const d = parseISO(t.date);
+    if (d >= start && d <= end) {
+      total += t.amount;
+      expenseTransactionCount += 1;
+    }
+  }
+
+  let prevMonthTotal = 0;
+  for (const t of transactions) {
+    if (t.kind !== "expense") continue;
+    const d = parseISO(t.date);
+    if (d >= prevStart && d <= prevEnd) prevMonthTotal += t.amount;
+  }
+
+  let percentChangeVsPrevious: number | null = null;
+  if (prevMonthTotal > 0) {
+    percentChangeVsPrevious = ((total - prevMonthTotal) / prevMonthTotal) * 100;
+  }
+
+  return {
+    total,
+    expenseTransactionCount,
+    daysInMonth,
+    avgDailySpend: daysInMonth > 0 ? total / daysInMonth : 0,
+    prevMonthTotal,
+    percentChangeVsPrevious,
+  };
 }
 
 export function maxDailyExpenseInVisibleMonth(
