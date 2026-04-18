@@ -1,5 +1,13 @@
 import { useMemo } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { router } from "expo-router";
@@ -26,6 +34,7 @@ export default function ProfileScreen() {
   const { signOut } = useAuth();
   const { colors, type, space, radius, mode, setMode, resolvedMode } =
     useAppTheme();
+  const insets = useSafeAreaInsets();
 
   const email = user?.primaryEmailAddress?.emailAddress ?? "";
   const name = user?.fullName || user?.username || email || "BudgetIQ User";
@@ -33,9 +42,11 @@ export default function ProfileScreen() {
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        container: {
+        scroll: {
           flex: 1,
           backgroundColor: colors.background,
+        },
+        scrollContent: {
           padding: space.s16,
           gap: space.s16,
         },
@@ -119,6 +130,8 @@ export default function ProfileScreen() {
     [colors, type, space, radius]
   );
 
+  const scrollBottomPadding = insets.bottom + 96;
+
   const confirmSignOut = () => {
     Alert.alert("Sign out", "Are you sure you want to sign out?", [
       { text: "Cancel", style: "cancel" },
@@ -144,7 +157,15 @@ export default function ProfileScreen() {
   ];
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={[
+        styles.scrollContent,
+        { paddingBottom: scrollBottomPadding },
+      ]}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator
+    >
       <View style={styles.header}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
@@ -230,6 +251,6 @@ export default function ProfileScreen() {
         <Ionicons name="log-out-outline" size={20} color={colors.danger} />
         <Text style={styles.signOutText}>Sign Out</Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
