@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Link } from "expo-router";
-import { colors, radius, spacing, typography } from "../constants/theme";
+import { colors, radius, space, type } from "../constants/theme";
 import { getCategoryById } from "../constants/categories";
 import { formatCurrency, formatDate } from "../utils/format";
 import type { Transaction } from "../types";
@@ -13,7 +13,7 @@ type Props = {
 export default function TransactionListItem({ transaction }: Props) {
   const category = getCategoryById(transaction.categoryId);
   const isIncome = transaction.kind === "income";
-  const amountColor = isIncome ? colors.income : colors.expense;
+  const amountColor = isIncome ? colors.success : colors.danger;
   const amountPrefix = isIncome ? "+" : "-";
 
   return (
@@ -57,11 +57,13 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
+    gap: space.s16,
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: space.s16,
+    paddingVertical: space.s16,
     borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   iconWrap: {
     width: 42,
@@ -71,16 +73,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   title: {
-    ...typography.body,
-    fontWeight: "600",
+    ...type.bodyMedium,
   },
   note: {
-    ...typography.caption,
-    marginTop: 2,
+    ...type.caption,
+    marginTop: space.s8,
   },
   date: {
-    ...typography.caption,
-    marginTop: 2,
+    ...type.caption,
+    marginTop: space.s8,
   },
   amount: {
     fontSize: 15,

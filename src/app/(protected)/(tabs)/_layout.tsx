@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { View, TouchableOpacity, StyleSheet, Platform } from "react-native";
-import { colors } from "../../../constants/theme";
+import { colors, space } from "../../../constants/theme";
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
   return (
@@ -71,9 +71,9 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 const styles = StyleSheet.create({
   wrapper: {
     position: "absolute",
-    bottom: 24,
-    left: 20,
-    right: 20,
+    bottom: space.s24,
+    left: space.s16,
+    right: space.s16,
     alignItems: "center",
   },
   container: {
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     justifyContent: "space-around",
-    paddingHorizontal: 8,
+    paddingHorizontal: space.s8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,

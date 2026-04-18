@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "../constants/theme";
+import { colors, radius, space, type } from "../constants/theme";
 import type { Insight } from "../types";
 
 type Props = {
@@ -11,7 +11,7 @@ const sentimentMap: Record<
   Insight["sentiment"],
   { icon: keyof typeof Ionicons.glyphMap; color: string }
 > = {
-  positive: { icon: "sparkles-outline", color: colors.income },
+  positive: { icon: "sparkles-outline", color: colors.success },
   neutral: { icon: "bulb-outline", color: colors.primary },
   warning: { icon: "alert-circle-outline", color: colors.warning },
 };
@@ -23,7 +23,7 @@ export default function InsightCard({ insight }: Props) {
       <View style={[styles.iconWrap, { backgroundColor: `${color}1A` }]}>
         <Ionicons name={icon} size={18} color={color} />
       </View>
-      <View style={{ flex: 1 }}>
+      <View style={styles.body}>
         <Text style={styles.title}>{insight.title}</Text>
         <Text style={styles.description}>{insight.description}</Text>
       </View>
@@ -34,10 +34,12 @@ export default function InsightCard({ insight }: Props) {
 const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
-    gap: spacing.md,
+    gap: space.s16,
     backgroundColor: colors.surface,
-    padding: spacing.lg,
+    padding: space.s16,
     borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   iconWrap: {
     width: 36,
@@ -46,13 +48,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  body: {
+    flex: 1,
+  },
   title: {
-    ...typography.body,
-    fontWeight: "700",
-    marginBottom: spacing.xs,
+    ...type.bodyMedium,
+    marginBottom: space.s8,
   },
   description: {
-    ...typography.bodyMuted,
+    ...type.body,
+    color: colors.textMuted,
     lineHeight: 20,
   },
 });

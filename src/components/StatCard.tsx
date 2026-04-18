@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View, ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "../constants/theme";
+import { colors, radius, space, type } from "../constants/theme";
 import { formatCurrency } from "../utils/format";
 
 type StatCardProps = {
@@ -34,8 +34,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.xs,
+    padding: space.s16,
+    gap: space.s8,
   },
   iconWrap: {
     width: 32,
@@ -43,12 +43,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.xs,
+    marginBottom: space.s8,
   },
   label: {
-    ...typography.caption,
+    ...type.caption,
   },
   amount: {
-    ...typography.h3,
+    ...type.titleSmall,
   },
 });
