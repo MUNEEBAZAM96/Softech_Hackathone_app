@@ -5,15 +5,13 @@ import { colors, radius, shadow, space, type } from "../../constants/theme";
 import { formatCurrency } from "../../utils/format";
 
 type Props = {
-  expanded: boolean;
-  onToggle: () => void;
+  onPress: () => void;
   visibleMonth: Date;
   monthExpenseTotal: number;
 };
 
 export default function CalendarSectionToggle({
-  expanded,
-  onToggle,
+  onPress,
   visibleMonth,
   monthExpenseTotal,
 }: Props) {
@@ -21,32 +19,21 @@ export default function CalendarSectionToggle({
 
   return (
     <Pressable
-      onPress={onToggle}
+      onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={
-        expanded
-          ? "Hide spending calendar"
-          : "Show spending calendar"
-      }
-      accessibilityState={{ expanded }}
+      accessibilityLabel="Open spending calendar"
     >
       <View style={styles.iconWrap}>
         <Ionicons name="calendar-outline" size={22} color={colors.primary} />
       </View>
       <View style={styles.textCol}>
-        <Text style={styles.title}>
-          {expanded ? "Hide calendar" : "Spending calendar"}
-        </Text>
+        <Text style={styles.title}>Spending calendar</Text>
         <Text style={styles.sub}>
           {monthLabel} · {formatCurrency(monthExpenseTotal)} spent
         </Text>
       </View>
-      <Ionicons
-        name={expanded ? "chevron-up" : "chevron-down"}
-        size={22}
-        color={colors.textMuted}
-      />
+      <Ionicons name="chevron-forward" size={22} color={colors.textMuted} />
     </Pressable>
   );
 }

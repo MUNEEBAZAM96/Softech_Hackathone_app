@@ -1,16 +1,22 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { View, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { colors, space } from "../../../constants/theme";
 
+const HIDDEN_TAB_NAMES = new Set(["spending-calendar"]);
+
 function CustomTabBar({ state, descriptors, navigation }: any) {
+  const tabRoutes = state.routes.filter(
+    (route: { name: string }) => !HIDDEN_TAB_NAMES.has(route.name)
+  );
+
   return (
     <View style={styles.wrapper}>
       <View style={styles.container}>
-        {state.routes.map((route: any, index: number) => {
-          const { options } = descriptors[route.key];
-          const isFocused = state.index === index;
-          const isCenter = index === 2;
+        {tabRoutes.map((route: any) => {
+          const currentName = state.routes[state.index]?.name;
+          const isFocused = currentName === route.name;
+          const isCenter = route.name === "add";
 
           const onPress = () => {
             const event = navigation.emit({
@@ -140,6 +146,13 @@ export default function TabLayout() {
       <Tabs.Screen name="add" options={{ title: "Add" }} />
       <Tabs.Screen name="insights" options={{ title: "Insights" }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+      <Tabs.Screen
+        name="spending-calendar"
+        options={{
+          title: "Spending calendar",
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
