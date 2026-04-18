@@ -15,6 +15,7 @@ import { getCategoryById } from "../../../constants/categories";
 import { formatCurrency } from "../../../utils/format";
 import { useAppTheme } from "../../../providers/ThemeProvider";
 import InsightCard from "../../../components/InsightCard";
+import CopilotChatSection from "../../../components/insights/CopilotChatSection";
 
 export default function InsightsScreen() {
   const { colors, type, space, radius } = useAppTheme();
@@ -116,6 +117,8 @@ export default function InsightsScreen() {
         )}
         <Text style={styles.coachAction}>{coaching.suggestion}</Text>
       </View>
+
+      <CopilotChatSection />
 
       <View style={{ gap: space.s16 }}>
         {insights.map((insight) => (

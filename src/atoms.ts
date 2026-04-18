@@ -6,6 +6,7 @@ import type {
   BudgetAlertPreferences,
   Category,
   CategoryBudget,
+  CopilotMessage,
   SavingsGoal,
   ThemeMode,
   Transaction,
@@ -135,3 +136,12 @@ export const themeModeAtom = atomWithStorage<ThemeMode>(
   "system",
   themeStorage
 );
+
+export const copilotMessagesAtom = atom<CopilotMessage[]>([]);
+
+export const copilotIsTypingAtom = atom(false);
+
+export const copilotErrorAtom = atom<string | null>(null);
+
+/** Draft text for Insights Copilot input (not persisted). */
+export const copilotInputDraftAtom = atom("");

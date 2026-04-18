@@ -102,3 +102,61 @@ export type BudgetAlertPreferences = {
 };
 
 export type ThemeMode = "system" | "light" | "dark";
+
+/** AI Copilot chat message (Insights tab). */
+export type CopilotMessage = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  createdAt: string;
+};
+
+export type CopilotQuickAction = {
+  id: string;
+  label: string;
+  prompt: string;
+};
+
+/** Compact, deterministic snapshot sent to the copilot API (no PII beyond category names). */
+export type CopilotContextSnapshot = {
+  currency: string;
+  monthKey: string;
+  balance: number;
+  income: number;
+  expense: number;
+  topCategories: Array<{
+    categoryId: string;
+    name: string;
+    amount: number;
+    percentOfExpense: number;
+  }>;
+  budgetsThisMonth: Array<{
+    categoryId: string;
+    name: string;
+    limit: number;
+    spent: number;
+    usagePct: number;
+    alertLevel: BudgetAlertLevel;
+  }>;
+  goals: Array<{
+    title: string;
+    targetAmount: number;
+    savedAmount: number;
+    remaining: number;
+    progressPct: number;
+    requiredPerDay: number;
+    pace: GoalPaceKind;
+    daysLeft: number;
+  }>;
+  generatedAt: string;
+};
+
+export type CopilotApiRequest = {
+  message: string;
+  history: Array<{ role: "user" | "assistant"; content: string }>;
+  context: CopilotContextSnapshot;
+};
+
+export type CopilotApiResponse = {
+  reply: string;
+};
