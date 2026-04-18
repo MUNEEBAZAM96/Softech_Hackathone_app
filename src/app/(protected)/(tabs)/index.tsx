@@ -1,5 +1,12 @@
-import { useMemo } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useAtomValue } from "jotai";
 import { startOfMonth } from "date-fns";
 import { router } from "expo-router";
@@ -33,6 +40,12 @@ import {
   sumExpensesInCalendarMonth,
 } from "../../../services/calendarSpend";
 import { generateInsights } from "../../../services/insightsService";
+import {
+  buildDailyTipContext,
+  DAILY_TIP_FALLBACK,
+  fetchDailyTip,
+  getTipFetchUserMessage,
+} from "../../../services/dailyTipService";
 import { useAppTheme } from "../../../providers/ThemeProvider";
 
 import DashboardHero from "../../../components/dashboard/DashboardHero";
@@ -147,11 +160,84 @@ export default function DashboardScreen() {
     return getSavingsGoalAnalytics(transactions, primaryGoal, goals);
   }, [transactions, goals, primaryGoal]);
 
+  const getCategoryName = useCallback(
+    (id: string) => getCategoryById(id)?.name ?? "Other",
+    []
+  );
+
+  const [tipText, setTipText] = useState(DAILY_TIP_FALLBACK);
+  const [tipLoading, setTipLoading] = useState(false);
+  const [tipError, setTipError] = useState<string | null>(null);
+  const [pullRefreshing, setPullRefreshing] = useState(false);
+  const initialTipSentRef = useRef(false);
+
+  const loadTip = useCallback(
+    async (reason: "initial" | "refresh" | "new") => {
+      const variationSeed =
+        reason === "new"
+          ? Math.floor(Math.random() * 0x7fffffff) ^ Date.now()
+          : reason === "refresh"
+            ? Date.now() ^ 0x51_37_46_53
+            : Date.now() ^ 0x9e37_79b1;
+      setTipLoading(true);
+      setTipError(null);
+      const ctx = buildDailyTipContext({
+        monthKey,
+        summary,
+        mom,
+        topCategoryRows: summary.byCategory.slice(0, 5),
+        getCategoryName,
+        budgetAlertsCount: dashboardBudgetAlerts.length,
+        primaryGoalAnalytics: goalAnalytics,
+        variationSeed,
+      });
+      try {
+        const tip = await fetchDailyTip(ctx);
+        setTipText(tip);
+      } catch (e) {
+        setTipText(DAILY_TIP_FALLBACK);
+        setTipError(getTipFetchUserMessage(e));
+      } finally {
+        setTipLoading(false);
+      }
+    },
+    [
+      monthKey,
+      summary,
+      mom,
+      getCategoryName,
+      dashboardBudgetAlerts.length,
+      goalAnalytics,
+    ]
+  );
+
+  useEffect(() => {
+    if (initialTipSentRef.current) return;
+    initialTipSentRef.current = true;
+    void loadTip("initial");
+  }, [loadTip]);
+
+  const onPullRefresh = useCallback(async () => {
+    setPullRefreshing(true);
+    try {
+      await loadTip("refresh");
+    } finally {
+      setPullRefreshing(false);
+    }
+  }, [loadTip]);
+
   return (
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={pullRefreshing}
+          onRefresh={onPullRefresh}
+          tintColor={colors.primary}
+        />
+      }
     >
       <DashboardHero totalBalance={summary.balance} mom={mom} />
       <CalendarSectionToggle
@@ -231,7 +317,12 @@ export default function DashboardScreen() {
       </View>
 
       <View style={styles.section}>
-        <AITipOfTheDay />
+        <AITipOfTheDay
+          message={tipText}
+          loading={tipLoading}
+          errorMessage={tipError}
+          onRequestNewTip={() => void loadTip("new")}
+        />
       </View>
 
       <View style={styles.section}>

@@ -160,3 +160,38 @@ export type CopilotApiRequest = {
 export type CopilotApiResponse = {
   reply: string;
 };
+
+/** Snapshot for `POST /api/daily-tip` — only fields present in-app (PKR). */
+export type DailyTipContext = {
+  currency: "PKR";
+  monthKey: string;
+  balance: number;
+  income: number;
+  expense: number;
+  monthOverMonth: {
+    currentMonthNet: number;
+    previousMonthNet: number;
+    percentChangeVsPrevious: number | null;
+  };
+  topCategories: Array<{
+    name: string;
+    amount: number;
+    percentOfExpense: number;
+  }>;
+  budgetAlertsCount: number;
+  primaryGoal: null | {
+    title: string;
+    progressPct: number;
+    pace: GoalPaceKind;
+    savedAmount: number;
+    targetAmount: number;
+    daysLeft: number;
+  };
+  /** Lets the model vary wording between requests. */
+  variationSeed: number;
+  generatedAt: string;
+};
+
+export type DailyTipApiResponse = {
+  tip: string;
+};
