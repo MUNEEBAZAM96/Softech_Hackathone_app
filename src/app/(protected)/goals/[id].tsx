@@ -9,14 +9,23 @@ import {
   View,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 
-import { savingsGoalsAtom } from "../../../atoms";
+import {
+  goalNotificationsEnabledAtom,
+  savingsGoalsAtom,
+  transactionsAtom,
+} from "../../../atoms";
 import { colors, radius, space, type } from "../../../constants/theme";
+import { getDatabase } from "../../../db/client";
+import { deleteGoalById, updateGoal } from "../../../db/goalsRepo";
+import { maybeNotifyGoalMilestones } from "../../../services/goalNotificationService";
 
 export default function EditGoalScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [goals, setGoals] = useAtom(savingsGoalsAtom);
+  const transactions = useAtomValue(transactionsAtom);
+  const goalNotificationsEnabled = useAtomValue(goalNotificationsEnabledAtom);
   const goal = useMemo(() => goals.find((g) => g.id === id), [goals, id]);
 
   const [title, setTitle] = useState(goal?.title ?? "");
@@ -46,7 +55,7 @@ export default function EditGoalScreen() {
     );
   }
 
-  const save = () => {
+  const save = async () => {
     const t = title.trim();
     const ta = Number(target.replace(/,/g, ""));
     if (!t || !ta || ta <= 0) {
@@ -64,21 +73,30 @@ export default function EditGoalScreen() {
     }
     const s = starting.trim() ? Number(starting.replace(/,/g, "")) : undefined;
     const m = monthly.trim() ? Number(monthly.replace(/,/g, "")) : undefined;
-    setGoals((prev) =>
-      prev.map((g) =>
-        g.id === goal.id
-          ? {
-              ...g,
-              title: t,
-              targetAmount: ta,
-              deadline: deadlineIso,
-              startingAmount: s && s > 0 ? s : undefined,
-              monthlyContributionGoal: m && m > 0 ? m : undefined,
-            }
-          : g
-      )
-    );
-    router.back();
+    const updatedGoal = {
+      ...goal,
+      title: t,
+      targetAmount: ta,
+      deadline: deadlineIso,
+      startingAmount: s && s > 0 ? s : undefined,
+      monthlyContributionGoal: m && m > 0 ? m : undefined,
+    };
+
+    try {
+      const db = await getDatabase();
+      await updateGoal(db, updatedGoal);
+      const next = goals.map((g) => (g.id === goal.id ? updatedGoal : g));
+      setGoals(next);
+      void maybeNotifyGoalMilestones(transactions, next, {
+        enabled: goalNotificationsEnabled,
+      });
+      router.back();
+    } catch {
+      Alert.alert(
+        "Save failed",
+        "Could not update this goal. Please try again."
+      );
+    }
   };
 
   const remove = () => {
@@ -87,9 +105,22 @@ export default function EditGoalScreen() {
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => {
-          setGoals((prev) => prev.filter((g) => g.id !== goal.id));
-          router.back();
+        onPress: async () => {
+          try {
+            const db = await getDatabase();
+            await deleteGoalById(db, goal.id);
+            const next = goals.filter((g) => g.id !== goal.id);
+            setGoals(next);
+            void maybeNotifyGoalMilestones(transactions, next, {
+              enabled: goalNotificationsEnabled,
+            });
+            router.back();
+          } catch {
+            Alert.alert(
+              "Delete failed",
+              "Could not remove this goal. Please try again."
+            );
+          }
         },
       },
     ]);

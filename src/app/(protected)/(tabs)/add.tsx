@@ -24,6 +24,8 @@ import {
   transactionsAtom,
 } from "../../../atoms";
 import { colors, radius, spacing, typography } from "../../../constants/theme";
+import { getDatabase } from "../../../db/client";
+import { insertTransaction } from "../../../db/transactionsRepo";
 import { maybeNotifyBudgetAlerts } from "../../../services/budgetNotificationService";
 import { maybeNotifyGoalMilestones } from "../../../services/goalNotificationService";
 import { createTransactionId } from "../../../services/transactionService";
@@ -35,6 +37,7 @@ export default function AddTransactionScreen() {
   const [note, setNote] = useState("");
 
   const [selectedCategory, setSelectedCategory] = useAtom(selectedCategoryAtom);
+  const transactions = useAtomValue(transactionsAtom);
   const setTransactions = useSetAtom(transactionsAtom);
   const budgets = useAtomValue(categoryBudgetsAtom);
   const goals = useAtomValue(savingsGoalsAtom);
@@ -49,7 +52,7 @@ export default function AddTransactionScreen() {
     setKind("expense");
   };
 
-  const onSave = () => {
+  const onSave = async () => {
     const numeric = Number(amount);
     if (!numeric || numeric <= 0) {
       Alert.alert("Invalid amount", "Please enter a valid amount greater than 0.");
@@ -77,18 +80,25 @@ export default function AddTransactionScreen() {
       createdAt: new Date().toISOString(),
     };
 
-    setTransactions((prev) => {
-      const next = [newTransaction, ...prev];
+    try {
+      const db = await getDatabase();
+      await insertTransaction(db, newTransaction);
+      const next = [newTransaction, ...transactions];
+      setTransactions(next);
       void maybeNotifyBudgetAlerts(next, budgets, budgetPrefs, {
         enabled: budgetNotificationsEnabled,
       });
       void maybeNotifyGoalMilestones(next, goals, {
         enabled: goalNotificationsEnabled,
       });
-      return next;
-    });
-    resetForm();
-    router.replace("/");
+      resetForm();
+      router.replace("/");
+    } catch {
+      Alert.alert(
+        "Save failed",
+        "Could not store this transaction. Please try again."
+      );
+    }
   };
 
   return (

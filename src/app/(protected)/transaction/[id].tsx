@@ -14,6 +14,8 @@ import {
 } from "../../../atoms";
 import { colors, radius, spacing, typography } from "../../../constants/theme";
 import { getCategoryById } from "../../../constants/categories";
+import { getDatabase } from "../../../db/client";
+import { deleteTransactionById } from "../../../db/transactionsRepo";
 import { maybeNotifyBudgetAlerts } from "../../../services/budgetNotificationService";
 import { maybeNotifyGoalMilestones } from "../../../services/goalNotificationService";
 import { formatCurrency, formatDate } from "../../../utils/format";
@@ -54,18 +56,25 @@ export default function TransactionDetailScreen() {
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => {
-            setTransactions((prev) => {
-              const next = prev.filter((t) => t.id !== transaction.id);
+          onPress: async () => {
+            try {
+              const db = await getDatabase();
+              await deleteTransactionById(db, transaction.id);
+              const next = transactions.filter((t) => t.id !== transaction.id);
+              setTransactions(next);
               void maybeNotifyBudgetAlerts(next, budgets, budgetPrefs, {
                 enabled: budgetNotificationsEnabled,
               });
               void maybeNotifyGoalMilestones(next, goals, {
                 enabled: goalNotificationsEnabled,
               });
-              return next;
-            });
-            router.back();
+              router.back();
+            } catch {
+              Alert.alert(
+                "Delete failed",
+                "Could not remove this transaction. Please try again."
+              );
+            }
           },
         },
       ]

@@ -8,22 +8,32 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { router } from "expo-router";
 
-import { savingsGoalsAtom } from "../../../atoms";
+import {
+  goalNotificationsEnabledAtom,
+  savingsGoalsAtom,
+  transactionsAtom,
+} from "../../../atoms";
 import { colors, radius, space, type } from "../../../constants/theme";
+import { getDatabase } from "../../../db/client";
+import { insertGoal } from "../../../db/goalsRepo";
+import { maybeNotifyGoalMilestones } from "../../../services/goalNotificationService";
 import { createLocalId } from "../../../utils/id";
 
 export default function NewGoalScreen() {
   const setGoals = useSetAtom(savingsGoalsAtom);
+  const goals = useAtomValue(savingsGoalsAtom);
+  const transactions = useAtomValue(transactionsAtom);
+  const goalNotificationsEnabled = useAtomValue(goalNotificationsEnabledAtom);
   const [title, setTitle] = useState("");
   const [target, setTarget] = useState("");
   const [deadline, setDeadline] = useState("");
   const [starting, setStarting] = useState("");
   const [monthly, setMonthly] = useState("");
 
-  const onSave = () => {
+  const onSave = async () => {
     const t = title.trim();
     const ta = Number(target.replace(/,/g, ""));
     const dl = deadline.trim();
@@ -45,20 +55,29 @@ export default function NewGoalScreen() {
     }
     const s = starting.trim() ? Number(starting.replace(/,/g, "")) : undefined;
     const m = monthly.trim() ? Number(monthly.replace(/,/g, "")) : undefined;
-    setGoals((prev) => [
-      ...prev,
-      {
-        id: createLocalId("goal"),
-        title: t,
-        targetAmount: ta,
-        deadline: deadlineIso,
-        startingAmount: s && s > 0 ? s : undefined,
-        monthlyContributionGoal: m && m > 0 ? m : undefined,
-        createdAt: new Date().toISOString(),
-        status: "active",
-      },
-    ]);
-    router.back();
+    const newGoal = {
+      id: createLocalId("goal"),
+      title: t,
+      targetAmount: ta,
+      deadline: deadlineIso,
+      startingAmount: s && s > 0 ? s : undefined,
+      monthlyContributionGoal: m && m > 0 ? m : undefined,
+      createdAt: new Date().toISOString(),
+      status: "active" as const,
+    };
+
+    try {
+      const db = await getDatabase();
+      await insertGoal(db, newGoal);
+      const next = [...goals, newGoal];
+      setGoals(next);
+      void maybeNotifyGoalMilestones(transactions, next, {
+        enabled: goalNotificationsEnabled,
+      });
+      router.back();
+    } catch {
+      Alert.alert("Save failed", "Could not store this goal. Please try again.");
+    }
   };
 
   return (

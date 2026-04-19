@@ -36,7 +36,8 @@
         {
           "color": "#0F172A"
         }
-      ]
+      ],
+      "expo-sqlite"
     ]
   }
 }

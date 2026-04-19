@@ -19,6 +19,8 @@ import {
 } from "../../../atoms";
 import { categories } from "../../../constants/categories";
 import { colors, radius, space, type } from "../../../constants/theme";
+import { getDatabase } from "../../../db/client";
+import { insertBudget } from "../../../db/budgetsRepo";
 import { formatMonthKey } from "../../../services/budgetAlertService";
 import {
   clearBudgetNotificationDedupe,
@@ -38,7 +40,7 @@ export default function NewBudgetScreen() {
 
   const expenseCats = categories.filter((c) => c.kind === "expense");
 
-  const onSave = () => {
+  const onSave = async () => {
     const lim = Number(limit.replace(/,/g, ""));
     if (!categoryId || !lim || lim <= 0) {
       Alert.alert("Check fields", "Pick a category and a positive limit.");
@@ -56,26 +58,30 @@ export default function NewBudgetScreen() {
       Alert.alert("Duplicate", "You already have a budget for that category and month.");
       return;
     }
-    setBudgets((prev) => {
-      const next: typeof prev = [
-        ...prev,
-        {
-          id: createLocalId("budget"),
-          categoryId,
-          monthKey: key,
-          limitAmount: lim,
-          createdAt: new Date().toISOString(),
-        },
-      ];
-      void (async () => {
-        await clearBudgetNotificationDedupe({ monthKey: key, categoryId });
-        await maybeNotifyBudgetAlerts(transactions, next, budgetPrefs, {
-          enabled: notificationsEnabled,
-        });
-      })();
-      return next;
-    });
-    router.back();
+    const newBudget = {
+      id: createLocalId("budget"),
+      categoryId,
+      monthKey: key,
+      limitAmount: lim,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      const db = await getDatabase();
+      await insertBudget(db, newBudget);
+      const next = [...existing, newBudget];
+      setBudgets(next);
+      await clearBudgetNotificationDedupe({ monthKey: key, categoryId });
+      void maybeNotifyBudgetAlerts(transactions, next, budgetPrefs, {
+        enabled: notificationsEnabled,
+      });
+      router.back();
+    } catch {
+      Alert.alert(
+        "Save failed",
+        "Could not store this budget. Please try again."
+      );
+    }
   };
 
   return (

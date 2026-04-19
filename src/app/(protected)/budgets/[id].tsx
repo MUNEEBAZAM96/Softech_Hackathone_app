@@ -19,6 +19,8 @@ import {
 } from "../../../atoms";
 import { categories } from "../../../constants/categories";
 import { colors, radius, space, type } from "../../../constants/theme";
+import { deleteBudgetById, updateBudget } from "../../../db/budgetsRepo";
+import { getDatabase } from "../../../db/client";
 import {
   clearBudgetNotificationDedupe,
   maybeNotifyBudgetAlerts,
@@ -51,7 +53,7 @@ export default function EditBudgetScreen() {
     );
   }
 
-  const save = () => {
+  const save = async () => {
     const lim = Number(limit.replace(/,/g, ""));
     if (!categoryId || !lim || lim <= 0) {
       Alert.alert("Check fields", "Pick a category and a positive limit.");
@@ -72,28 +74,38 @@ export default function EditBudgetScreen() {
       Alert.alert("Duplicate", "Another budget already uses that category and month.");
       return;
     }
-    setBudgets((prev) => {
-      const next = prev.map((b) =>
-        b.id === row.id
-          ? { ...b, categoryId, monthKey: key, limitAmount: lim }
-          : b
+    const updatedBudget = {
+      ...row,
+      categoryId,
+      monthKey: key,
+      limitAmount: lim,
+    };
+
+    try {
+      const db = await getDatabase();
+      await updateBudget(db, updatedBudget);
+      const next = budgets.map((b) =>
+        b.id === row.id ? updatedBudget : b
       );
-      void (async () => {
-        await clearBudgetNotificationDedupe({
-          monthKey: row.monthKey,
-          categoryId: row.categoryId,
-        });
-        await clearBudgetNotificationDedupe({
-          monthKey: key,
-          categoryId,
-        });
-        await maybeNotifyBudgetAlerts(transactions, next, budgetPrefs, {
-          enabled: notificationsEnabled,
-        });
-      })();
-      return next;
-    });
-    router.back();
+      setBudgets(next);
+      await clearBudgetNotificationDedupe({
+        monthKey: row.monthKey,
+        categoryId: row.categoryId,
+      });
+      await clearBudgetNotificationDedupe({
+        monthKey: key,
+        categoryId,
+      });
+      void maybeNotifyBudgetAlerts(transactions, next, budgetPrefs, {
+        enabled: notificationsEnabled,
+      });
+      router.back();
+    } catch {
+      Alert.alert(
+        "Save failed",
+        "Could not update this budget. Please try again."
+      );
+    }
   };
 
   const remove = () => {
@@ -102,13 +114,23 @@ export default function EditBudgetScreen() {
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => {
-          setBudgets((prev) => prev.filter((b) => b.id !== row.id));
-          void clearBudgetNotificationDedupe({
-            monthKey: row.monthKey,
-            categoryId: row.categoryId,
-          });
-          router.back();
+        onPress: async () => {
+          try {
+            const db = await getDatabase();
+            await deleteBudgetById(db, row.id);
+            const next = budgets.filter((b) => b.id !== row.id);
+            setBudgets(next);
+            await clearBudgetNotificationDedupe({
+              monthKey: row.monthKey,
+              categoryId: row.categoryId,
+            });
+            router.back();
+          } catch {
+            Alert.alert(
+              "Delete failed",
+              "Could not remove this budget. Please try again."
+            );
+          }
         },
       },
     ]);
