@@ -5,7 +5,7 @@
 
 Do **not** commit real API keys or tokens. Copy `.env.example` to `.env` and fill in values locally:
 
-- **`GITHUB_TOKEN`** — GitHub personal access token (for the optional Copilot proxy server). Leave empty in `.env.example`; set only in your private `.env`.
+- **`GEMINI_API_KEY`** — Google Gemini API key (for the optional Copilot proxy server). Leave empty in `.env.example`; set only in your private `.env`.
 - **`EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`** — from your Clerk dashboard (Expo public key).
 - **`EXPO_PUBLIC_COPILOT_API_URL`** — base URL of the proxy (see comments in `.env.example` for simulator vs device).
 
