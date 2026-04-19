@@ -1,8 +1,11 @@
+import { useEffect } from "react";
+
 import { tokenCache } from "../../cache";
 import { ClerkProvider, ClerkLoaded } from "@clerk/clerk-expo";
 import { Slot } from "expo-router";
 
 import { ThemeProvider, ThemedStatusBar } from "../providers/ThemeProvider";
+import { initBudgetNotifications } from "../services/budgetNotificationService";
 
 export default function RootLayout() {
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
@@ -10,6 +13,10 @@ export default function RootLayout() {
   if (!publishableKey) {
     throw new Error("Add EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in your .env");
   }
+
+  useEffect(() => {
+    void initBudgetNotifications();
+  }, []);
 
   return (
     <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>

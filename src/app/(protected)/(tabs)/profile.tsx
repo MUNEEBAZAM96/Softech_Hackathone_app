@@ -4,6 +4,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from "react-native";
@@ -11,8 +12,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { router } from "expo-router";
+import { useAtom } from "jotai";
 
+import { budgetNotificationsEnabledAtom } from "../../../atoms";
 import { useAppTheme } from "../../../providers/ThemeProvider";
+import {
+  ensureNotificationPermission,
+  initBudgetNotifications,
+} from "../../../services/budgetNotificationService";
 import type { ThemeMode } from "../../../types";
 
 type MenuItem = {
@@ -35,6 +42,24 @@ export default function ProfileScreen() {
   const { colors, type, space, radius, mode, setMode, resolvedMode } =
     useAppTheme();
   const insets = useSafeAreaInsets();
+  const [budgetNotificationsEnabled, setBudgetNotificationsEnabled] = useAtom(
+    budgetNotificationsEnabledAtom
+  );
+
+  const onToggleBudgetNotifications = async (next: boolean) => {
+    if (next) {
+      const granted = await ensureNotificationPermission();
+      if (!granted) {
+        Alert.alert(
+          "Notifications disabled",
+          "Enable notifications for BudgetIQ AI in your device settings to receive budget alerts."
+        );
+        return;
+      }
+      await initBudgetNotifications();
+    }
+    setBudgetNotificationsEnabled(next);
+  };
 
   const email = user?.primaryEmailAddress?.emailAddress ?? "";
   const name = user?.fullName || user?.username || email || "BudgetIQ User";
@@ -125,6 +150,24 @@ export default function ProfileScreen() {
         activeBadge: {
           ...type.captionBold,
           color: colors.primary,
+        },
+        preferenceRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: space.s16,
+          paddingHorizontal: space.s16,
+          paddingVertical: space.s16,
+          backgroundColor: colors.surface,
+          borderRadius: radius.lg,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        preferenceBody: { flex: 1 },
+        preferenceLabel: { ...type.bodyMedium },
+        preferenceHint: {
+          ...type.caption,
+          color: colors.textMuted,
+          marginTop: 2,
         },
       }),
     [colors, type, space, radius]
@@ -222,6 +265,29 @@ export default function ProfileScreen() {
           Currently using {resolvedMode === "dark" ? "dark" : "light"} appearance
           {mode === "system" ? " (from system)" : ""}.
         </Text>
+      </View>
+
+      <View>
+        <Text style={styles.sectionLabel}>Notifications</Text>
+        <View style={styles.preferenceRow}>
+          <Ionicons
+            name="notifications-outline"
+            size={22}
+            color={colors.primary}
+          />
+          <View style={styles.preferenceBody}>
+            <Text style={styles.preferenceLabel}>Budget alerts</Text>
+            <Text style={styles.preferenceHint}>
+              Get a heads-up when a category crosses 80% or exceeds its monthly
+              limit.
+            </Text>
+          </View>
+          <Switch
+            value={budgetNotificationsEnabled}
+            onValueChange={onToggleBudgetNotifications}
+            trackColor={{ true: colors.primary, false: colors.border }}
+          />
+        </View>
       </View>
 
       <View style={styles.menu}>

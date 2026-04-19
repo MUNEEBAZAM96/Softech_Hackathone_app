@@ -11,6 +11,9 @@ Do **not** commit real API keys or tokens. Copy `.env.example` to `.env` and fil
 
 ---
 
+
+
+
 ## 🚀 Introduction
 
 Welcome to **BudgetIQ AI**, an upgraded AI-powered personal finance application built using **React Native (Expo Router)** and **SQLite**.

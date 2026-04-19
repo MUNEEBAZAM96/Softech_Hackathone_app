@@ -11,15 +11,27 @@ import {
 import { useSetAtom, useAtomValue } from "jotai";
 import { router } from "expo-router";
 
-import { categoryBudgetsAtom } from "../../../atoms";
+import {
+  budgetAlertPreferencesAtom,
+  budgetNotificationsEnabledAtom,
+  categoryBudgetsAtom,
+  transactionsAtom,
+} from "../../../atoms";
 import { categories } from "../../../constants/categories";
 import { colors, radius, space, type } from "../../../constants/theme";
 import { formatMonthKey } from "../../../services/budgetAlertService";
+import {
+  clearBudgetNotificationDedupe,
+  maybeNotifyBudgetAlerts,
+} from "../../../services/budgetNotificationService";
 import { createLocalId } from "../../../utils/id";
 
 export default function NewBudgetScreen() {
   const setBudgets = useSetAtom(categoryBudgetsAtom);
   const existing = useAtomValue(categoryBudgetsAtom);
+  const transactions = useAtomValue(transactionsAtom);
+  const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
+  const notificationsEnabled = useAtomValue(budgetNotificationsEnabledAtom);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [monthKey, setMonthKey] = useState(formatMonthKey(new Date()));
   const [limit, setLimit] = useState("");
@@ -44,16 +56,25 @@ export default function NewBudgetScreen() {
       Alert.alert("Duplicate", "You already have a budget for that category and month.");
       return;
     }
-    setBudgets((prev) => [
-      ...prev,
-      {
-        id: createLocalId("budget"),
-        categoryId,
-        monthKey: key,
-        limitAmount: lim,
-        createdAt: new Date().toISOString(),
-      },
-    ]);
+    setBudgets((prev) => {
+      const next: typeof prev = [
+        ...prev,
+        {
+          id: createLocalId("budget"),
+          categoryId,
+          monthKey: key,
+          limitAmount: lim,
+          createdAt: new Date().toISOString(),
+        },
+      ];
+      void (async () => {
+        await clearBudgetNotificationDedupe({ monthKey: key, categoryId });
+        await maybeNotifyBudgetAlerts(transactions, next, budgetPrefs, {
+          enabled: notificationsEnabled,
+        });
+      })();
+      return next;
+    });
     router.back();
   };
 

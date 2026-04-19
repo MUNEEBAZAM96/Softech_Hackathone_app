@@ -30,7 +30,13 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "@lottiefiles/dotlottie-react-native/plugin"
+      "@lottiefiles/dotlottie-react-native/plugin",
+      [
+        "expo-notifications",
+        {
+          "color": "#0F172A"
+        }
+      ]
     ]
   }
 }

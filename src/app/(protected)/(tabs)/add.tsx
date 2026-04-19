@@ -12,10 +12,17 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 
-import { selectedCategoryAtom, transactionsAtom } from "../../../atoms";
+import {
+  budgetAlertPreferencesAtom,
+  budgetNotificationsEnabledAtom,
+  categoryBudgetsAtom,
+  selectedCategoryAtom,
+  transactionsAtom,
+} from "../../../atoms";
 import { colors, radius, spacing, typography } from "../../../constants/theme";
+import { maybeNotifyBudgetAlerts } from "../../../services/budgetNotificationService";
 import { createTransactionId } from "../../../services/transactionService";
 import type { Transaction, TransactionKind } from "../../../types";
 
@@ -26,6 +33,9 @@ export default function AddTransactionScreen() {
 
   const [selectedCategory, setSelectedCategory] = useAtom(selectedCategoryAtom);
   const setTransactions = useSetAtom(transactionsAtom);
+  const budgets = useAtomValue(categoryBudgetsAtom);
+  const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
+  const notificationsEnabled = useAtomValue(budgetNotificationsEnabledAtom);
 
   const resetForm = () => {
     setAmount("");
@@ -62,7 +72,13 @@ export default function AddTransactionScreen() {
       createdAt: new Date().toISOString(),
     };
 
-    setTransactions((prev) => [newTransaction, ...prev]);
+    setTransactions((prev) => {
+      const next = [newTransaction, ...prev];
+      void maybeNotifyBudgetAlerts(next, budgets, budgetPrefs, {
+        enabled: notificationsEnabled,
+      });
+      return next;
+    });
     resetForm();
     router.replace("/");
   };

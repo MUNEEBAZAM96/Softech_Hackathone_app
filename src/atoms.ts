@@ -128,6 +128,17 @@ export const budgetAlertPreferencesAtom = atom<BudgetAlertPreferences>({
   showEarlyWarningAt70: true,
 });
 
+const budgetNotificationsStorage = createJSONStorage<boolean>(
+  () => AsyncStorage
+);
+
+/** User toggle: push a local notification when a budget crosses warning/exceeded. */
+export const budgetNotificationsEnabledAtom = atomWithStorage<boolean>(
+  "budgetiq-budget-notifications-enabled",
+  true,
+  budgetNotificationsStorage
+);
+
 const themeStorage = createJSONStorage<ThemeMode>(() => AsyncStorage);
 
 /** User preference: `system` follows OS appearance. */

@@ -4,15 +4,24 @@ import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useMemo } from "react";
 
-import { transactionsAtom } from "../../../atoms";
+import {
+  budgetAlertPreferencesAtom,
+  budgetNotificationsEnabledAtom,
+  categoryBudgetsAtom,
+  transactionsAtom,
+} from "../../../atoms";
 import { colors, radius, spacing, typography } from "../../../constants/theme";
 import { getCategoryById } from "../../../constants/categories";
+import { maybeNotifyBudgetAlerts } from "../../../services/budgetNotificationService";
 import { formatCurrency, formatDate } from "../../../utils/format";
 
 export default function TransactionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const transactions = useAtomValue(transactionsAtom);
   const setTransactions = useSetAtom(transactionsAtom);
+  const budgets = useAtomValue(categoryBudgetsAtom);
+  const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
+  const notificationsEnabled = useAtomValue(budgetNotificationsEnabledAtom);
 
   const transaction = useMemo(
     () => transactions.find((t) => t.id === id),
@@ -41,7 +50,13 @@ export default function TransactionDetailScreen() {
           text: "Delete",
           style: "destructive",
           onPress: () => {
-            setTransactions((prev) => prev.filter((t) => t.id !== transaction.id));
+            setTransactions((prev) => {
+              const next = prev.filter((t) => t.id !== transaction.id);
+              void maybeNotifyBudgetAlerts(next, budgets, budgetPrefs, {
+                enabled: notificationsEnabled,
+              });
+              return next;
+            });
             router.back();
           },
         },

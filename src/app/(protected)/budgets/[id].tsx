@@ -9,15 +9,27 @@ import {
   View,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 
-import { categoryBudgetsAtom } from "../../../atoms";
+import {
+  budgetAlertPreferencesAtom,
+  budgetNotificationsEnabledAtom,
+  categoryBudgetsAtom,
+  transactionsAtom,
+} from "../../../atoms";
 import { categories } from "../../../constants/categories";
 import { colors, radius, space, type } from "../../../constants/theme";
+import {
+  clearBudgetNotificationDedupe,
+  maybeNotifyBudgetAlerts,
+} from "../../../services/budgetNotificationService";
 
 export default function EditBudgetScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [budgets, setBudgets] = useAtom(categoryBudgetsAtom);
+  const transactions = useAtomValue(transactionsAtom);
+  const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
+  const notificationsEnabled = useAtomValue(budgetNotificationsEnabledAtom);
   const row = useMemo(() => budgets.find((b) => b.id === id), [budgets, id]);
 
   const [categoryId, setCategoryId] = useState(row?.categoryId ?? "");
@@ -60,13 +72,27 @@ export default function EditBudgetScreen() {
       Alert.alert("Duplicate", "Another budget already uses that category and month.");
       return;
     }
-    setBudgets((prev) =>
-      prev.map((b) =>
+    setBudgets((prev) => {
+      const next = prev.map((b) =>
         b.id === row.id
           ? { ...b, categoryId, monthKey: key, limitAmount: lim }
           : b
-      )
-    );
+      );
+      void (async () => {
+        await clearBudgetNotificationDedupe({
+          monthKey: row.monthKey,
+          categoryId: row.categoryId,
+        });
+        await clearBudgetNotificationDedupe({
+          monthKey: key,
+          categoryId,
+        });
+        await maybeNotifyBudgetAlerts(transactions, next, budgetPrefs, {
+          enabled: notificationsEnabled,
+        });
+      })();
+      return next;
+    });
     router.back();
   };
 
@@ -78,6 +104,10 @@ export default function EditBudgetScreen() {
         style: "destructive",
         onPress: () => {
           setBudgets((prev) => prev.filter((b) => b.id !== row.id));
+          void clearBudgetNotificationDedupe({
+            monthKey: row.monthKey,
+            categoryId: row.categoryId,
+          });
           router.back();
         },
       },
