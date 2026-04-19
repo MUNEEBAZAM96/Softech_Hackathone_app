@@ -21,14 +21,14 @@ const HIDDEN_TAB_NAMES = new Set(["spending-calendar"]);
 const ICON_MAP: Record<string, { active: string; inactive: string }> = {
   index: { active: "home", inactive: "home-outline" },
   history: { active: "time", inactive: "time-outline" },
-  insights: { active: "sparkles", inactive: "sparkles-outline" },
+  insights: { active: "chatbubbles", inactive: "chatbubbles-outline" },
   profile: { active: "person", inactive: "person-outline" },
 };
 
 const LABEL_MAP: Record<string, string> = {
   index: "Home",
   history: "History",
-  insights: "Insights",
+  insights: "Copilot",
   profile: "Profile",
   add: "Add",
 };
@@ -515,7 +515,7 @@ function TabsNavigator() {
       <Tabs.Screen name="index" options={{ title: "Dashboard" }} />
       <Tabs.Screen name="history" options={{ title: "History" }} />
       <Tabs.Screen name="add" options={{ title: "Add" }} />
-      <Tabs.Screen name="insights" options={{ title: "Insights" }} />
+      <Tabs.Screen name="insights" options={{ title: "AI Copilot" }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
       <Tabs.Screen
         name="spending-calendar"

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   ActivityIndicator,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -8,7 +11,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useAtom, useSetAtom } from "jotai";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAtom } from "jotai";
 
 import {
   budgetAlertPreferencesAtom,
@@ -25,9 +29,17 @@ import { useAppTheme } from "../../providers/ThemeProvider";
 import { buildCopilotContextSnapshot } from "../../services/copilotContextService";
 import { sendCopilotMessage } from "../../services/copilotApiService";
 import { createLocalId } from "../../utils/id";
+import type { CopilotMessage } from "../../types";
+
+const QUICK_ACTIONS = COPILOT_QUICK_ACTIONS.slice(0, 4);
+/** Extra bottom inset so content clears the floating tab bar. */
+const TAB_BAR_CLEARANCE = 78;
 
 export default function CopilotChatSection() {
-  const { colors, type, space, radius } = useAppTheme();
+  const { colors, type, space, radius, shadow } = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const listRef = useRef<FlatList<CopilotMessage>>(null);
+
   const [transactions] = useAtom(transactionsAtom);
   const [goals] = useAtom(savingsGoalsAtom);
   const [budgets] = useAtom(categoryBudgetsAtom);
@@ -37,22 +49,43 @@ export default function CopilotChatSection() {
   const [error, setError] = useAtom(copilotErrorAtom);
   const [input, setInput] = useAtom(copilotInputDraftAtom);
 
-  const scrollRef = useRef<ScrollView>(null);
+  const bottomPad = Math.max(insets.bottom, space.s8) + TAB_BAR_CLEARANCE;
 
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        card: {
-          backgroundColor: colors.surface,
-          borderRadius: radius.lg,
-          padding: space.s16,
-          gap: space.s16,
-          borderWidth: 1,
-          borderColor: colors.border,
+        root: { flex: 1 },
+        kav: { flex: 1 },
+        inner: {
+          flex: 1,
+          paddingHorizontal: space.s16,
+          paddingTop: space.s8,
         },
-        title: { ...type.titleSmall, fontSize: 16 },
-        subtitle: { ...type.caption, color: colors.textSecondary },
-        chipRow: { flexDirection: "row", flexWrap: "wrap", gap: space.s8 },
+        eyebrow: {
+          ...type.captionBold,
+          letterSpacing: 1.2,
+          color: colors.primary,
+          marginBottom: space.s8,
+        },
+        title: {
+          ...type.title,
+          fontSize: 22,
+          letterSpacing: -0.3,
+          marginBottom: 4,
+        },
+        subtitle: {
+          ...type.caption,
+          color: colors.textSecondary,
+          marginBottom: space.s16,
+        },
+        chipScroll: {
+          marginBottom: space.s16,
+          flexGrow: 0,
+        },
+        chipScrollContent: {
+          gap: space.s8,
+          paddingRight: space.s16,
+        },
         chip: {
           paddingVertical: space.s8,
           paddingHorizontal: space.s16,
@@ -61,79 +94,131 @@ export default function CopilotChatSection() {
           borderColor: colors.border,
           backgroundColor: colors.surfaceAlt,
         },
-        chipText: { ...type.caption, color: colors.text, fontWeight: "600" },
-        chatScroll: { maxHeight: 280 },
+        chipText: {
+          ...type.caption,
+          color: colors.textSecondary,
+          fontWeight: "600",
+        },
+        errorBanner: {
+          ...type.caption,
+          color: colors.danger,
+          backgroundColor: `${colors.danger}14`,
+          paddingVertical: space.s8,
+          paddingHorizontal: space.s16,
+          borderRadius: radius.md,
+          marginBottom: space.s16,
+          borderWidth: 1,
+          borderColor: `${colors.danger}35`,
+        },
+        chatShell: {
+          flex: 1,
+          minHeight: 120,
+          backgroundColor: colors.surface,
+          borderRadius: radius.lg,
+          borderWidth: 1,
+          borderColor: colors.border,
+          overflow: "hidden",
+          ...shadow.card,
+        },
+        listContent: {
+          padding: space.s16,
+          flexGrow: 1,
+        },
         bubbleUser: {
           alignSelf: "flex-end",
-          maxWidth: "92%",
-          backgroundColor: colors.primaryMuted,
-          padding: space.s16,
-          borderRadius: radius.md,
+          maxWidth: "88%",
+          backgroundColor: colors.primary,
+          paddingHorizontal: space.s16,
+          paddingVertical: 12,
+          borderRadius: radius.lg,
+          borderBottomRightRadius: radius.sm,
           marginBottom: space.s8,
         },
         bubbleAssistant: {
           alignSelf: "flex-start",
-          maxWidth: "92%",
+          maxWidth: "88%",
           backgroundColor: colors.surfaceAlt,
-          padding: space.s16,
-          borderRadius: radius.md,
+          paddingHorizontal: space.s16,
+          paddingVertical: 12,
+          borderRadius: radius.lg,
+          borderBottomLeftRadius: radius.sm,
           marginBottom: space.s8,
-          borderWidth: 1,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
         },
-        bubbleText: { ...type.body, color: colors.text },
-        bubbleTextUser: { ...type.body, color: "#FFFFFF" },
+        bubbleText: { ...type.body, color: colors.text, lineHeight: 22 },
+        bubbleTextUser: { ...type.body, color: "#FFFFFF", lineHeight: 22 },
+        emptyWrap: {
+          flex: 1,
+          justifyContent: "center",
+          paddingVertical: space.s24,
+          minHeight: 160,
+        },
+        emptyPrimary: {
+          ...type.bodyMedium,
+          color: colors.textSecondary,
+          textAlign: "center",
+        },
+        emptyHint: {
+          ...type.caption,
+          color: colors.textMuted,
+          textAlign: "center",
+          marginTop: space.s8,
+        },
         typingRow: {
           flexDirection: "row",
           alignItems: "center",
           gap: space.s8,
           paddingVertical: space.s8,
+          alignSelf: "flex-start",
         },
         typingText: { ...type.caption, color: colors.textMuted },
+        inputWrap: {
+          paddingTop: space.s16,
+          paddingBottom: bottomPad,
+        },
         inputRow: {
           flexDirection: "row",
           gap: space.s8,
-          alignItems: "flex-end",
+          alignItems: "center",
         },
         input: {
           flex: 1,
           ...type.body,
-          minHeight: 44,
+          minHeight: 48,
           maxHeight: 120,
           borderWidth: 1,
           borderColor: colors.border,
-          borderRadius: radius.md,
+          borderRadius: radius.pill,
           paddingHorizontal: space.s16,
-          paddingVertical: space.s8,
-          backgroundColor: colors.background,
+          paddingVertical: 12,
+          backgroundColor: colors.surface,
           color: colors.text,
         },
         sendBtn: {
           backgroundColor: colors.primary,
-          paddingVertical: space.s16,
+          paddingVertical: 14,
           paddingHorizontal: space.s16,
-          borderRadius: radius.md,
+          borderRadius: radius.pill,
+          minWidth: 72,
+          alignItems: "center",
+          justifyContent: "center",
         },
         sendBtnDisabled: { opacity: 0.45 },
         sendBtnText: { ...type.bodyMedium, color: "#FFFFFF" },
-        errorBanner: {
-          ...type.caption,
-          color: colors.danger,
-          backgroundColor: `${colors.danger}12`,
-          padding: space.s8,
-          borderRadius: radius.sm,
-        },
-        empty: { ...type.caption, color: colors.textMuted, textAlign: "center" },
       }),
-    [colors, type, space, radius]
+    [colors, type, space, radius, shadow.card, bottomPad]
   );
 
+  const scrollToEnd = useCallback(() => {
+    setTimeout(() => {
+      listRef.current?.scrollToEnd({ animated: true });
+    }, 60);
+  }, []);
+
   useEffect(() => {
-    const t = setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 80);
-    return () => clearTimeout(t);
-  }, [messages.length, isTyping]);
+    scrollToEnd();
+  }, [messages.length, isTyping, scrollToEnd]);
 
   const sendText = useCallback(
     async (raw: string) => {
@@ -141,9 +226,9 @@ export default function CopilotChatSection() {
       if (!text || isTyping) return;
 
       setError(null);
-      const userMsg = {
+      const userMsg: CopilotMessage = {
         id: createLocalId("copilot-user"),
-        role: "user" as const,
+        role: "user",
         text,
         createdAt: new Date().toISOString(),
       };
@@ -182,20 +267,8 @@ export default function CopilotChatSection() {
         const msg =
           e instanceof Error
             ? e.message
-            : "Something went wrong. Is the copilot server running?";
+            : "Could not reach the copilot server.";
         setError(msg);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: createLocalId("copilot-err"),
-            role: "assistant",
-            text:
-              `I couldn’t reach the AI service.\n\n${msg}\n\n` +
-              `Tip: run the proxy with \`npm run server\`, set \`GITHUB_TOKEN\` in \`.env\`, ` +
-              `and point the app to it with \`EXPO_PUBLIC_COPILOT_API_URL\` (e.g. http://localhost:3001 or your LAN IP for a device).`,
-            createdAt: new Date().toISOString(),
-          },
-        ]);
       } finally {
         setIsTyping(false);
       }
@@ -216,87 +289,125 @@ export default function CopilotChatSection() {
 
   const canSend = input.trim().length > 0 && !isTyping;
 
-  return (
-    <View style={styles.card}>
-      <Text style={styles.title}>AI Copilot</Text>
-      <Text style={styles.subtitle}>
-        Ask using your local budgets, goals, and transactions (via secure proxy).
-      </Text>
-
-      <View style={styles.chipRow}>
-        {COPILOT_QUICK_ACTIONS.map((a) => (
-          <Pressable
-            key={a.id}
-            onPress={() => sendText(a.prompt)}
-            disabled={isTyping}
-            style={({ pressed }) => [
-              styles.chip,
-              pressed && { opacity: 0.85 },
-              isTyping && { opacity: 0.5 },
-            ]}
-          >
-            <Text style={styles.chipText}>{a.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
-
-      <ScrollView
-        ref={scrollRef}
-        style={styles.chatScroll}
-        nestedScrollEnabled
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+  const renderMessage = useCallback(
+    ({ item }: { item: CopilotMessage }) => (
+      <View
+        style={
+          item.role === "user" ? styles.bubbleUser : styles.bubbleAssistant
+        }
       >
-        {messages.length === 0 && !isTyping ? (
-          <Text style={styles.empty}>
-            Ask a question or tap a chip. A compact summary of your finances is
-            sent to your copilot server — never your API key.
-          </Text>
-        ) : null}
-        {messages.map((m) => (
-          <View
-            key={m.id}
-            style={
-              m.role === "user" ? styles.bubbleUser : styles.bubbleAssistant
-            }
-          >
-            <Text
-              style={
-                m.role === "user" ? styles.bubbleTextUser : styles.bubbleText
-              }
-            >
-              {m.text}
-            </Text>
-          </View>
-        ))}
-        {isTyping ? (
-          <View style={styles.typingRow}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.typingText}>Analyzing your finances…</Text>
-          </View>
-        ) : null}
-      </ScrollView>
-
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          placeholder="Ask BudgetIQ Copilot…"
-          placeholderTextColor={colors.textMuted}
-          value={input}
-          onChangeText={setInput}
-          editable={!isTyping}
-          multiline
-        />
-        <Pressable
-          onPress={() => sendText(input)}
-          disabled={!canSend}
-          style={[styles.sendBtn, !canSend && styles.sendBtnDisabled]}
+        <Text
+          style={
+            item.role === "user" ? styles.bubbleTextUser : styles.bubbleText
+          }
         >
-          <Text style={styles.sendBtnText}>Send</Text>
-        </Pressable>
+          {item.text}
+        </Text>
       </View>
+    ),
+    [styles.bubbleAssistant, styles.bubbleText, styles.bubbleTextUser, styles.bubbleUser]
+  );
+
+  return (
+    <View style={styles.root}>
+      <KeyboardAvoidingView
+        style={styles.kav}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 52 : 0}
+      >
+        <View style={styles.inner}>
+          <Text style={styles.eyebrow}>INSIGHTS</Text>
+          <Text style={styles.title}>AI Copilot</Text>
+          <Text style={styles.subtitle} numberOfLines={1}>
+            Budgets, goals & spending — answered from your data.
+          </Text>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.chipScroll}
+            contentContainerStyle={styles.chipScrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {QUICK_ACTIONS.map((a) => (
+              <Pressable
+                key={a.id}
+                onPress={() => sendText(a.prompt)}
+                disabled={isTyping}
+                style={({ pressed }) => [
+                  styles.chip,
+                  pressed && { opacity: 0.88 },
+                  isTyping && { opacity: 0.45 },
+                ]}
+              >
+                <Text style={styles.chipText}>{a.label}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+
+          {error ? (
+            <Text style={styles.errorBanner} numberOfLines={3}>
+              {error}
+            </Text>
+          ) : null}
+
+          <View style={styles.chatShell}>
+            <FlatList
+              ref={listRef}
+              style={{ flex: 1 }}
+              data={messages}
+              keyExtractor={(m) => m.id}
+              renderItem={renderMessage}
+              contentContainerStyle={styles.listContent}
+              onContentSizeChange={scrollToEnd}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                !isTyping ? (
+                  <View style={styles.emptyWrap}>
+                    <Text style={styles.emptyPrimary}>
+                      Start a conversation
+                    </Text>
+                    <Text style={styles.emptyHint}>
+                      Use a shortcut or type a message. Sent via your copilot proxy
+                      only.
+                    </Text>
+                  </View>
+                ) : null
+              }
+              ListFooterComponent={
+                isTyping ? (
+                  <View style={styles.typingRow}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={styles.typingText}>Thinking…</Text>
+                  </View>
+                ) : null
+              }
+            />
+          </View>
+
+          <View style={styles.inputWrap}>
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.input}
+                placeholder="Message…"
+                placeholderTextColor={colors.textMuted}
+                value={input}
+                onChangeText={setInput}
+                editable={!isTyping}
+                multiline
+              />
+              <Pressable
+                onPress={() => sendText(input)}
+                disabled={!canSend}
+                style={[styles.sendBtn, !canSend && styles.sendBtnDisabled]}
+              >
+                <Text style={styles.sendBtnText}>Send</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
