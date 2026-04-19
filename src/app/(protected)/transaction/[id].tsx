@@ -8,11 +8,14 @@ import {
   budgetAlertPreferencesAtom,
   budgetNotificationsEnabledAtom,
   categoryBudgetsAtom,
+  goalNotificationsEnabledAtom,
+  savingsGoalsAtom,
   transactionsAtom,
 } from "../../../atoms";
 import { colors, radius, spacing, typography } from "../../../constants/theme";
 import { getCategoryById } from "../../../constants/categories";
 import { maybeNotifyBudgetAlerts } from "../../../services/budgetNotificationService";
+import { maybeNotifyGoalMilestones } from "../../../services/goalNotificationService";
 import { formatCurrency, formatDate } from "../../../utils/format";
 
 export default function TransactionDetailScreen() {
@@ -20,8 +23,10 @@ export default function TransactionDetailScreen() {
   const transactions = useAtomValue(transactionsAtom);
   const setTransactions = useSetAtom(transactionsAtom);
   const budgets = useAtomValue(categoryBudgetsAtom);
+  const goals = useAtomValue(savingsGoalsAtom);
   const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
-  const notificationsEnabled = useAtomValue(budgetNotificationsEnabledAtom);
+  const budgetNotificationsEnabled = useAtomValue(budgetNotificationsEnabledAtom);
+  const goalNotificationsEnabled = useAtomValue(goalNotificationsEnabledAtom);
 
   const transaction = useMemo(
     () => transactions.find((t) => t.id === id),
@@ -53,7 +58,10 @@ export default function TransactionDetailScreen() {
             setTransactions((prev) => {
               const next = prev.filter((t) => t.id !== transaction.id);
               void maybeNotifyBudgetAlerts(next, budgets, budgetPrefs, {
-                enabled: notificationsEnabled,
+                enabled: budgetNotificationsEnabled,
+              });
+              void maybeNotifyGoalMilestones(next, goals, {
+                enabled: goalNotificationsEnabled,
               });
               return next;
             });

@@ -14,12 +14,16 @@ import { useAuth, useUser } from "@clerk/clerk-expo";
 import { router } from "expo-router";
 import { useAtom } from "jotai";
 
-import { budgetNotificationsEnabledAtom } from "../../../atoms";
+import {
+  budgetNotificationsEnabledAtom,
+  goalNotificationsEnabledAtom,
+} from "../../../atoms";
 import { useAppTheme } from "../../../providers/ThemeProvider";
 import {
   ensureNotificationPermission,
   initBudgetNotifications,
 } from "../../../services/budgetNotificationService";
+import { initGoalNotifications } from "../../../services/goalNotificationService";
 import type { ThemeMode } from "../../../types";
 
 type MenuItem = {
@@ -45,6 +49,9 @@ export default function ProfileScreen() {
   const [budgetNotificationsEnabled, setBudgetNotificationsEnabled] = useAtom(
     budgetNotificationsEnabledAtom
   );
+  const [goalNotificationsEnabled, setGoalNotificationsEnabled] = useAtom(
+    goalNotificationsEnabledAtom
+  );
 
   const onToggleBudgetNotifications = async (next: boolean) => {
     if (next) {
@@ -59,6 +66,21 @@ export default function ProfileScreen() {
       await initBudgetNotifications();
     }
     setBudgetNotificationsEnabled(next);
+  };
+
+  const onToggleGoalNotifications = async (next: boolean) => {
+    if (next) {
+      const granted = await ensureNotificationPermission();
+      if (!granted) {
+        Alert.alert(
+          "Notifications disabled",
+          "Enable notifications for BudgetIQ AI in your device settings to receive goal milestone alerts."
+        );
+        return;
+      }
+      await initGoalNotifications();
+    }
+    setGoalNotificationsEnabled(next);
   };
 
   const email = user?.primaryEmailAddress?.emailAddress ?? "";
@@ -269,24 +291,41 @@ export default function ProfileScreen() {
 
       <View>
         <Text style={styles.sectionLabel}>Notifications</Text>
-        <View style={styles.preferenceRow}>
-          <Ionicons
-            name="notifications-outline"
-            size={22}
-            color={colors.primary}
-          />
-          <View style={styles.preferenceBody}>
-            <Text style={styles.preferenceLabel}>Budget alerts</Text>
-            <Text style={styles.preferenceHint}>
-              Get a heads-up when a category crosses 80% or exceeds its monthly
-              limit.
-            </Text>
+        <View style={{ gap: space.s8 }}>
+          <View style={styles.preferenceRow}>
+            <Ionicons
+              name="notifications-outline"
+              size={22}
+              color={colors.primary}
+            />
+            <View style={styles.preferenceBody}>
+              <Text style={styles.preferenceLabel}>Budget alerts</Text>
+              <Text style={styles.preferenceHint}>
+                Get a heads-up when a category crosses 80% or exceeds its monthly
+                limit.
+              </Text>
+            </View>
+            <Switch
+              value={budgetNotificationsEnabled}
+              onValueChange={onToggleBudgetNotifications}
+              trackColor={{ true: colors.primary, false: colors.border }}
+            />
           </View>
-          <Switch
-            value={budgetNotificationsEnabled}
-            onValueChange={onToggleBudgetNotifications}
-            trackColor={{ true: colors.primary, false: colors.border }}
-          />
+
+          <View style={styles.preferenceRow}>
+            <Ionicons name="flag-outline" size={22} color={colors.primary} />
+            <View style={styles.preferenceBody}>
+              <Text style={styles.preferenceLabel}>Goal milestones</Text>
+              <Text style={styles.preferenceHint}>
+                Get encouragement when a savings goal crosses 80%, 90%, and 100%.
+              </Text>
+            </View>
+            <Switch
+              value={goalNotificationsEnabled}
+              onValueChange={onToggleGoalNotifications}
+              trackColor={{ true: colors.primary, false: colors.border }}
+            />
+          </View>
         </View>
       </View>
 

@@ -139,6 +139,15 @@ export const budgetNotificationsEnabledAtom = atomWithStorage<boolean>(
   budgetNotificationsStorage
 );
 
+const goalNotificationsStorage = createJSONStorage<boolean>(() => AsyncStorage);
+
+/** User toggle: push a local notification for savings-goal milestones. */
+export const goalNotificationsEnabledAtom = atomWithStorage<boolean>(
+  "budgetiq-goal-notifications-enabled",
+  true,
+  goalNotificationsStorage
+);
+
 const themeStorage = createJSONStorage<ThemeMode>(() => AsyncStorage);
 
 /** User preference: `system` follows OS appearance. */

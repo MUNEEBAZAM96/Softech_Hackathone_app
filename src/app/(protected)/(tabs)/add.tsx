@@ -18,11 +18,14 @@ import {
   budgetAlertPreferencesAtom,
   budgetNotificationsEnabledAtom,
   categoryBudgetsAtom,
+  goalNotificationsEnabledAtom,
   selectedCategoryAtom,
+  savingsGoalsAtom,
   transactionsAtom,
 } from "../../../atoms";
 import { colors, radius, spacing, typography } from "../../../constants/theme";
 import { maybeNotifyBudgetAlerts } from "../../../services/budgetNotificationService";
+import { maybeNotifyGoalMilestones } from "../../../services/goalNotificationService";
 import { createTransactionId } from "../../../services/transactionService";
 import type { Transaction, TransactionKind } from "../../../types";
 
@@ -34,8 +37,10 @@ export default function AddTransactionScreen() {
   const [selectedCategory, setSelectedCategory] = useAtom(selectedCategoryAtom);
   const setTransactions = useSetAtom(transactionsAtom);
   const budgets = useAtomValue(categoryBudgetsAtom);
+  const goals = useAtomValue(savingsGoalsAtom);
   const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
-  const notificationsEnabled = useAtomValue(budgetNotificationsEnabledAtom);
+  const budgetNotificationsEnabled = useAtomValue(budgetNotificationsEnabledAtom);
+  const goalNotificationsEnabled = useAtomValue(goalNotificationsEnabledAtom);
 
   const resetForm = () => {
     setAmount("");
@@ -75,7 +80,10 @@ export default function AddTransactionScreen() {
     setTransactions((prev) => {
       const next = [newTransaction, ...prev];
       void maybeNotifyBudgetAlerts(next, budgets, budgetPrefs, {
-        enabled: notificationsEnabled,
+        enabled: budgetNotificationsEnabled,
+      });
+      void maybeNotifyGoalMilestones(next, goals, {
+        enabled: goalNotificationsEnabled,
       });
       return next;
     });
