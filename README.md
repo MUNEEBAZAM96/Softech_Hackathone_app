@@ -1,6 +1,8 @@
 # Softech_Hackathone_app
 # 💰 BudgetIQ AI – Smart Finance Tracker (Hackathon Project)
 
+# link Demo Vidio : https://lnkd.in/dVWRZ8d2
+
 ## Environment variables
 
 Do **not** commit real API keys or tokens. Copy `.env.example` to `.env` and fill in values locally:
