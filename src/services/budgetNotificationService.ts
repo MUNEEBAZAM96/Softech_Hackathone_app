@@ -2,7 +2,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
-import { getCategoryById } from "../constants/categories";
 import type {
   BudgetAlertLevel,
   BudgetAlertPreferences,
@@ -86,7 +85,7 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 }
 
 const ctx: BudgetAlertContext = {
-  getCategoryName: (id) => getCategoryById(id)?.name ?? "Category",
+  getCategoryName: (id) => id || "Category",
 };
 
 /**

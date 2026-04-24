@@ -10,15 +10,10 @@ import { useAtomValue } from "jotai";
 import { startOfMonth } from "date-fns";
 import { router } from "expo-router";
 
-import {
-  budgetAlertPreferencesAtom,
-  categoryBudgetsAtom,
-  dismissedBudgetAlertIdsAtom,
-  savingsGoalsAtom,
-  transactionsAtom,
-} from "../../../atoms";
+import { budgetAlertPreferencesAtom, dismissedBudgetAlertIdsAtom } from "../../../atoms";
 import AppCard from "../../../components/ui/AppCard";
 import { getCategoryById } from "../../../constants/categories";
+import { useFinanceData } from "../../../providers/FinanceDataProvider";
 import {
   filterDashboardBudgetAlerts,
   formatMonthKey,
@@ -60,9 +55,7 @@ import TransactionListItem from "../../../components/TransactionListItem";
 
 export default function DashboardScreen() {
   const { colors, type, space } = useAppTheme();
-  const transactions = useAtomValue(transactionsAtom);
-  const goals = useAtomValue(savingsGoalsAtom);
-  const budgets = useAtomValue(categoryBudgetsAtom);
+  const { transactions, goals, budgets, categories, refresh } = useFinanceData();
   const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
   const dismissedAlerts = useAtomValue(dismissedBudgetAlertIdsAtom);
 
@@ -131,9 +124,9 @@ export default function DashboardScreen() {
   const alertCtx = useMemo(
     () => ({
       getCategoryName: (id: string) =>
-        getCategoryById(id)?.name ?? "Category",
+        getCategoryById(id, categories)?.name ?? "Category",
     }),
-    []
+    [categories]
   );
 
   const monthKey = formatMonthKey(new Date());
@@ -204,8 +197,8 @@ export default function DashboardScreen() {
   }, [dashboardBudgetAlerts.length]);
 
   const getCategoryName = useCallback(
-    (id: string) => getCategoryById(id)?.name ?? "Other",
-    []
+    (id: string) => getCategoryById(id, categories)?.name ?? "Other",
+    [categories]
   );
 
   const [tipText, setTipText] = useState(DAILY_TIP_FALLBACK);
@@ -263,11 +256,12 @@ export default function DashboardScreen() {
   const onPullRefresh = useCallback(async () => {
     setPullRefreshing(true);
     try {
+      await refresh();
       await loadTip("refresh");
     } finally {
       setPullRefreshing(false);
     }
-  }, [loadTip]);
+  }, [loadTip, refresh]);
 
   return (
     <ScrollView
@@ -355,7 +349,7 @@ export default function DashboardScreen() {
           ) : (
             <View style={styles.categoryStack}>
               {topCategories.map((row) => {
-                const category = getCategoryById(row.categoryId);
+                const category = getCategoryById(row.categoryId, categories);
                 return (
                   <CategoryProgressRow
                     key={row.categoryId}

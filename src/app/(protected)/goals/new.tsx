@@ -8,24 +8,19 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { router } from "expo-router";
 
-import {
-  goalNotificationsEnabledAtom,
-  savingsGoalsAtom,
-  transactionsAtom,
-} from "../../../atoms";
+import { goalNotificationsEnabledAtom } from "../../../atoms";
 import { colors, radius, space, type } from "../../../constants/theme";
 import { getDatabase } from "../../../db/client";
 import { insertGoal } from "../../../db/goalsRepo";
+import { useFinanceData } from "../../../providers/FinanceDataProvider";
 import { maybeNotifyGoalMilestones } from "../../../services/goalNotificationService";
 import { createLocalId } from "../../../utils/id";
 
 export default function NewGoalScreen() {
-  const setGoals = useSetAtom(savingsGoalsAtom);
-  const goals = useAtomValue(savingsGoalsAtom);
-  const transactions = useAtomValue(transactionsAtom);
+  const { goals, transactions, refresh } = useFinanceData();
   const goalNotificationsEnabled = useAtomValue(goalNotificationsEnabledAtom);
   const [title, setTitle] = useState("");
   const [target, setTarget] = useState("");
@@ -69,8 +64,8 @@ export default function NewGoalScreen() {
     try {
       const db = await getDatabase();
       await insertGoal(db, newGoal);
+      await refresh();
       const next = [...goals, newGoal];
-      setGoals(next);
       void maybeNotifyGoalMilestones(transactions, next, {
         enabled: goalNotificationsEnabled,
       });

@@ -5,25 +5,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type {
   BudgetAlertPreferences,
   Category,
-  CategoryBudget,
   CopilotMessage,
-  SavingsGoal,
   ThemeMode,
-  Transaction,
 } from "./types";
 
-export const transactionsAtom = atom<Transaction[]>([]);
-
 export const selectedCategoryAtom = atom<Category | null>(null);
-
-/** Local-first savings goals. */
-export const savingsGoalsAtom = atom<SavingsGoal[]>([]);
-
-/** Monthly category spend caps. */
-export const categoryBudgetsAtom = atom<CategoryBudget[]>([]);
-
-/** Becomes true when finance rows are hydrated from SQLite. */
-export const financeHydratedAtom = atom(false);
 
 /** Dismissed budget alert ids (from `BudgetAlertItem.id`). */
 export const dismissedBudgetAlertIdsAtom = atom<Record<string, true>>({});
@@ -43,7 +29,9 @@ export const budgetNotificationsEnabledAtom = atomWithStorage<boolean>(
   budgetNotificationsStorage
 );
 
-const goalNotificationsStorage = createJSONStorage<boolean>(() => AsyncStorage);
+const goalNotificationsStorage = createJSONStorage<boolean>(
+  () => AsyncStorage
+);
 
 /** User toggle: push a local notification for savings-goal milestones. */
 export const goalNotificationsEnabledAtom = atomWithStorage<boolean>(

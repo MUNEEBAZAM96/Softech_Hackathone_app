@@ -1,6 +1,7 @@
 import type { Category } from "../types";
 
-export const categories: Category[] = [
+/** Optional templates for future onboarding/import flows (not auto-seeded). */
+export const DEFAULT_SEED_CATEGORIES: Category[] = [
   { id: "food", name: "Food & Dining", icon: "fast-food-outline", color: "#F97316", kind: "expense" },
   { id: "transport", name: "Transport", icon: "car-outline", color: "#0EA5E9", kind: "expense" },
   { id: "shopping", name: "Shopping", icon: "cart-outline", color: "#EC4899", kind: "expense" },
@@ -16,8 +17,13 @@ export const categories: Category[] = [
   { id: "other_income", name: "Other Income", icon: "wallet-outline", color: "#84CC16", kind: "income" },
 ];
 
-export const getCategoryById = (id: string): Category | undefined =>
-  categories.find((c) => c.id === id);
+/** Resolve a category from a live DB list (no static fallback). */
+export const getCategoryById = (
+  id: string,
+  list: Category[] = []
+): Category | undefined => list.find((c) => c.id === id);
 
-export const getCategoriesByKind = (kind: "income" | "expense"): Category[] =>
-  categories.filter((c) => c.kind === kind);
+export const getCategoriesByKind = (
+  kind: "income" | "expense",
+  list: Category[] = []
+): Category[] => list.filter((c) => c.kind === kind);

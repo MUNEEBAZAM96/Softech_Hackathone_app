@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { format, isSameMonth, parseISO, startOfMonth } from "date-fns";
-import { useAtomValue } from "jotai";
-
-import { transactionsAtom } from "../../../atoms";
 import { colors, space, type } from "../../../constants/theme";
+import { useFinanceData } from "../../../providers/FinanceDataProvider";
 import {
   addMonths,
   buildDailyExpenseTotals,
@@ -20,7 +18,7 @@ import AppCard from "../../../components/ui/AppCard";
 
 // Tab screen (hidden from tab bar via href: null) — stable route: /spending-calendar
 export default function SpendingCalendarScreen() {
-  const transactions = useAtomValue(transactionsAtom);
+  const { transactions } = useFinanceData();
 
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
   const [selectedDayKey, setSelectedDayKey] = useState(() =>

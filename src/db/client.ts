@@ -4,9 +4,13 @@ const DB_NAME = "budgetiq.db";
 
 let dbPromise: Promise<SQLiteDatabase> | null = null;
 
-export function getDatabase(): Promise<SQLiteDatabase> {
+export async function getDatabase(): Promise<SQLiteDatabase> {
   if (!dbPromise) {
-    dbPromise = openDatabaseAsync(DB_NAME);
+    dbPromise = (async () => {
+      const db = await openDatabaseAsync(DB_NAME);
+      await db.execAsync("PRAGMA foreign_keys = ON;");
+      return db;
+    })();
   }
   return dbPromise;
 }

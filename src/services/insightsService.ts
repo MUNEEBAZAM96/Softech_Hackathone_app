@@ -1,4 +1,3 @@
-import { getCategoryById } from "../constants/categories";
 import type { FinancialSummary, Insight, Transaction } from "../types";
 import { summarize } from "./transactionService";
 
@@ -39,15 +38,13 @@ export const generateInsights = (transactions: Transaction[]): Insight[] => {
 
   const top = summary.byCategory[0];
   if (top) {
-    const category = getCategoryById(top.categoryId);
-    if (category) {
-      insights.push({
-        id: `top-${category.id}`,
-        title: `Top spending: ${category.name}`,
-        description: `${top.percent}% of your expenses went to ${category.name.toLowerCase()}. Review whether this aligns with your goals.`,
-        sentiment: top.percent > 40 ? "warning" : "neutral",
-      });
-    }
+    const categoryName = top.categoryId;
+    insights.push({
+      id: `top-${top.categoryId}`,
+      title: `Top spending: ${categoryName}`,
+      description: `${top.percent}% of your expenses went to ${categoryName.toLowerCase()}. Review whether this aligns with your goals.`,
+      sentiment: top.percent > 40 ? "warning" : "neutral",
+    });
   }
 
   if (insights.length === 0) {

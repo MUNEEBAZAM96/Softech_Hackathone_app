@@ -1,5 +1,6 @@
 import type {
   BudgetAlertPreferences,
+  Category,
   CategoryBudget,
   CopilotContextSnapshot,
   SavingsGoal,
@@ -14,10 +15,6 @@ import {
 import { getAllSavingsGoalAnalytics } from "./savingsGoalService";
 import { summarize } from "./transactionService";
 
-const ctx: BudgetAlertContext = {
-  getCategoryName: (id) => getCategoryById(id)?.name ?? "Unknown",
-};
-
 /**
  * Build a compact snapshot of local finance state for the copilot model.
  * Deterministic and safe to serialize.
@@ -27,13 +24,17 @@ export function buildCopilotContextSnapshot(
   goals: SavingsGoal[],
   budgets: CategoryBudget[],
   prefs: BudgetAlertPreferences,
-  now: Date = new Date()
+  now: Date = new Date(),
+  categories: Category[] = []
 ): CopilotContextSnapshot {
+  const ctx: BudgetAlertContext = {
+    getCategoryName: (id) => getCategoryById(id, categories)?.name ?? "Unknown",
+  };
   const summary = summarize(transactions);
   const monthKey = formatMonthKey(now);
   const topCategories = summary.byCategory.slice(0, 6).map((row) => ({
     categoryId: row.categoryId,
-    name: getCategoryById(row.categoryId)?.name ?? row.categoryId,
+    name: getCategoryById(row.categoryId, categories)?.name ?? row.categoryId,
     amount: row.total,
     percentOfExpense: row.percent,
   }));
@@ -43,7 +44,7 @@ export function buildCopilotContextSnapshot(
     const alert = buildBudgetAlertItem(transactions, b, prefs, ctx, now);
     return {
       categoryId: b.categoryId,
-      name: getCategoryById(b.categoryId)?.name ?? b.categoryId,
+      name: getCategoryById(b.categoryId, categories)?.name ?? b.categoryId,
       limit: b.limitAmount,
       spent: alert.spent,
       usagePct: Math.round(alert.usagePct * 10) / 10,

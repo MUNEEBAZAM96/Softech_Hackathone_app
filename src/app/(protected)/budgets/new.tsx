@@ -8,16 +8,15 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useSetAtom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { router } from "expo-router";
 
 import {
   budgetAlertPreferencesAtom,
   budgetNotificationsEnabledAtom,
-  categoryBudgetsAtom,
-  transactionsAtom,
 } from "../../../atoms";
-import { categories } from "../../../constants/categories";
+import { getCategoriesByKind } from "../../../constants/categories";
+import { useFinanceData } from "../../../providers/FinanceDataProvider";
 import { colors, radius, space, type } from "../../../constants/theme";
 import { getDatabase } from "../../../db/client";
 import { insertBudget } from "../../../db/budgetsRepo";
@@ -29,16 +28,14 @@ import {
 import { createLocalId } from "../../../utils/id";
 
 export default function NewBudgetScreen() {
-  const setBudgets = useSetAtom(categoryBudgetsAtom);
-  const existing = useAtomValue(categoryBudgetsAtom);
-  const transactions = useAtomValue(transactionsAtom);
+  const { budgets: existing, transactions, categories, refresh } = useFinanceData();
   const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
   const notificationsEnabled = useAtomValue(budgetNotificationsEnabledAtom);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [monthKey, setMonthKey] = useState(formatMonthKey(new Date()));
   const [limit, setLimit] = useState("");
 
-  const expenseCats = categories.filter((c) => c.kind === "expense");
+  const expenseCats = getCategoriesByKind("expense", categories);
 
   const onSave = async () => {
     const lim = Number(limit.replace(/,/g, ""));
@@ -69,8 +66,8 @@ export default function NewBudgetScreen() {
     try {
       const db = await getDatabase();
       await insertBudget(db, newBudget);
+      await refresh();
       const next = [...existing, newBudget];
-      setBudgets(next);
       await clearBudgetNotificationDedupe({ monthKey: key, categoryId });
       void maybeNotifyBudgetAlerts(transactions, next, budgetPrefs, {
         enabled: notificationsEnabled,
@@ -91,6 +88,14 @@ export default function NewBudgetScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <Text style={styles.label}>Category</Text>
+      {expenseCats.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyTitle}>No expense categories yet</Text>
+          <Text style={styles.emptyHint}>
+            Create an expense category first from category selector, then add a budget.
+          </Text>
+        </View>
+      ) : null}
       <View style={styles.chips}>
         {expenseCats.map((c) => (
           <Pressable
@@ -130,7 +135,11 @@ export default function NewBudgetScreen() {
         style={styles.input}
         placeholderTextColor={colors.textMuted}
       />
-      <Pressable onPress={onSave} style={styles.save}>
+      <Pressable
+        onPress={onSave}
+        disabled={expenseCats.length === 0}
+        style={[styles.save, expenseCats.length === 0 && styles.saveDisabled]}
+      >
         <Text style={styles.saveText}>Save budget</Text>
       </Pressable>
     </ScrollView>
@@ -151,6 +160,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   chipText: { ...type.caption, color: colors.text },
+  emptyWrap: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: space.s16,
+    gap: space.s8,
+  },
+  emptyTitle: { ...type.bodyMedium, color: colors.text },
+  emptyHint: { ...type.caption, color: colors.textMuted },
   input: {
     ...type.body,
     backgroundColor: colors.surface,
@@ -167,4 +186,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   saveText: { ...type.bodyMedium, color: colors.surface },
+  saveDisabled: { opacity: 0.45 },
 });

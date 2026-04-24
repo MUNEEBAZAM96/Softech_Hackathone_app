@@ -1,9 +1,7 @@
 import { useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { useAtomValue } from "jotai";
-
-import { transactionsAtom } from "../../../atoms";
 import { colors, radius, spacing, typography } from "../../../constants/theme";
+import { useFinanceData } from "../../../providers/FinanceDataProvider";
 import { sortByDateDesc } from "../../../services/transactionService";
 import TransactionListItem from "../../../components/TransactionListItem";
 import type { TransactionKind } from "../../../types";
@@ -17,7 +15,7 @@ const FILTERS: { id: Filter; label: string }[] = [
 ];
 
 export default function HistoryScreen() {
-  const transactions = useAtomValue(transactionsAtom);
+  const { transactions } = useFinanceData();
   const [filter, setFilter] = useState<Filter>("all");
 
   const filtered = useMemo(() => {

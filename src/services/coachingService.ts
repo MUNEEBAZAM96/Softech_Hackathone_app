@@ -5,7 +5,6 @@ import type {
   SavingsGoalAnalytics,
 } from "../types";
 import type { Transaction } from "../types";
-import { getCategoryById } from "../constants/categories";
 import {
   buildBudgetAlertItem,
   formatMonthKey,
@@ -23,7 +22,7 @@ export type FinancialCoaching = {
 };
 
 function categoryName(id: string): string {
-  return getCategoryById(id)?.name ?? "This category";
+  return id || "This category";
 }
 
 const ctx: BudgetAlertContext = {

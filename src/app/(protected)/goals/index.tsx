@@ -6,11 +6,10 @@ import {
   Text,
   View,
 } from "react-native";
-import { useAtomValue } from "jotai";
 import { Link, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-import { savingsGoalsAtom, transactionsAtom } from "../../../atoms";
+import { useFinanceData } from "../../../providers/FinanceDataProvider";
 import { colors, radius, shadow, space, type } from "../../../constants/theme";
 import {
   getAllSavingsGoalAnalytics,
@@ -19,8 +18,7 @@ import { formatCurrency, formatDate } from "../../../utils/format";
 import ProgressBarThin from "../../../components/ui/ProgressBarThin";
 
 export default function GoalsIndexScreen() {
-  const goals = useAtomValue(savingsGoalsAtom);
-  const transactions = useAtomValue(transactionsAtom);
+  const { goals, transactions } = useFinanceData();
   const rows = useMemo(
     () => getAllSavingsGoalAnalytics(transactions, goals),
     [transactions, goals]

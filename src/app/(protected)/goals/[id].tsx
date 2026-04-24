@@ -9,13 +9,10 @@ import {
   View,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 
-import {
-  goalNotificationsEnabledAtom,
-  savingsGoalsAtom,
-  transactionsAtom,
-} from "../../../atoms";
+import { goalNotificationsEnabledAtom } from "../../../atoms";
+import { useFinanceData } from "../../../providers/FinanceDataProvider";
 import { colors, radius, space, type } from "../../../constants/theme";
 import { getDatabase } from "../../../db/client";
 import { deleteGoalById, updateGoal } from "../../../db/goalsRepo";
@@ -23,8 +20,7 @@ import { maybeNotifyGoalMilestones } from "../../../services/goalNotificationSer
 
 export default function EditGoalScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [goals, setGoals] = useAtom(savingsGoalsAtom);
-  const transactions = useAtomValue(transactionsAtom);
+  const { goals, transactions, refresh } = useFinanceData();
   const goalNotificationsEnabled = useAtomValue(goalNotificationsEnabledAtom);
   const goal = useMemo(() => goals.find((g) => g.id === id), [goals, id]);
 
@@ -85,8 +81,8 @@ export default function EditGoalScreen() {
     try {
       const db = await getDatabase();
       await updateGoal(db, updatedGoal);
+      await refresh();
       const next = goals.map((g) => (g.id === goal.id ? updatedGoal : g));
-      setGoals(next);
       void maybeNotifyGoalMilestones(transactions, next, {
         enabled: goalNotificationsEnabled,
       });
@@ -109,8 +105,8 @@ export default function EditGoalScreen() {
           try {
             const db = await getDatabase();
             await deleteGoalById(db, goal.id);
+            await refresh();
             const next = goals.filter((g) => g.id !== goal.id);
-            setGoals(next);
             void maybeNotifyGoalMilestones(transactions, next, {
               enabled: goalNotificationsEnabled,
             });

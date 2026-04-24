@@ -11,6 +11,19 @@ Do **not** commit real API keys or tokens. Copy `.env.example` to `.env` and fil
 - **`EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`** — from your Clerk dashboard (Expo public key).
 - **`EXPO_PUBLIC_COPILOT_API_URL`** — base URL of the proxy (see comments in `.env.example` for simulator vs device).
 
+### Local data (SQLite)
+
+Finance data is stored on-device with **expo-sqlite** (local-first, survives app restarts):
+
+- **DB file:** `budgetiq.db` — opened in `src/db/client.ts` with `PRAGMA foreign_keys = ON`.
+- **Migrations:** `src/db/migrations.ts` — version via `PRAGMA user_version` (v2: `users`, `categories`, `transactions`, `goals`, `budgets`).
+- **Repositories:** `src/db/*Repo.ts` — all reads/writes go through these modules, not UI components.
+- **Snapshot loader:** `src/db/financeRepository.ts` — `loadFinanceSnapshot()` loads the local user, categories, transactions, goals, and budgets.
+- **App wiring:** `src/providers/FinanceDataProvider.tsx` exposes `useFinanceData()` and `refresh()` after mutations. Jotai is used only for UI prefs (theme, copilot draft, notification toggles, etc.), not for canonical finance rows.
+- **First launch:** strict blank-slate mode — no categories, transactions, goals, or budgets are preloaded.
+- **How to start:** create your first category from the category selector, then add your first transaction.
+- **Dev reset:** uninstall the app, clear app storage, or use a fresh simulator/emulator to test first-launch behavior.
+
 ---
 
 **I am Ussing SDK 52 and all the Dependencies are according to the SDK 52**

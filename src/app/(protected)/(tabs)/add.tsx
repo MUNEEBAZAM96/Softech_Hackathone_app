@@ -12,20 +12,18 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 
 import {
   budgetAlertPreferencesAtom,
   budgetNotificationsEnabledAtom,
-  categoryBudgetsAtom,
   goalNotificationsEnabledAtom,
   selectedCategoryAtom,
-  savingsGoalsAtom,
-  transactionsAtom,
 } from "../../../atoms";
 import { colors, radius, spacing, typography } from "../../../constants/theme";
 import { getDatabase } from "../../../db/client";
 import { insertTransaction } from "../../../db/transactionsRepo";
+import { useFinanceData } from "../../../providers/FinanceDataProvider";
 import { maybeNotifyBudgetAlerts } from "../../../services/budgetNotificationService";
 import { maybeNotifyGoalMilestones } from "../../../services/goalNotificationService";
 import { createTransactionId } from "../../../services/transactionService";
@@ -37,10 +35,7 @@ export default function AddTransactionScreen() {
   const [note, setNote] = useState("");
 
   const [selectedCategory, setSelectedCategory] = useAtom(selectedCategoryAtom);
-  const transactions = useAtomValue(transactionsAtom);
-  const setTransactions = useSetAtom(transactionsAtom);
-  const budgets = useAtomValue(categoryBudgetsAtom);
-  const goals = useAtomValue(savingsGoalsAtom);
+  const { transactions, budgets, goals, categories, refresh } = useFinanceData();
   const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
   const budgetNotificationsEnabled = useAtomValue(budgetNotificationsEnabledAtom);
   const goalNotificationsEnabled = useAtomValue(goalNotificationsEnabledAtom);
@@ -53,6 +48,14 @@ export default function AddTransactionScreen() {
   };
 
   const onSave = async () => {
+    const availableForKind = categories.filter((c) => c.kind === kind);
+    if (availableForKind.length === 0) {
+      Alert.alert(
+        "No categories yet",
+        `Create a ${kind} category first to save a transaction.`
+      );
+      return;
+    }
     const numeric = Number(amount);
     if (!numeric || numeric <= 0) {
       Alert.alert("Invalid amount", "Please enter a valid amount greater than 0.");
@@ -83,8 +86,8 @@ export default function AddTransactionScreen() {
     try {
       const db = await getDatabase();
       await insertTransaction(db, newTransaction);
+      await refresh();
       const next = [newTransaction, ...transactions];
-      setTransactions(next);
       void maybeNotifyBudgetAlerts(next, budgets, budgetPrefs, {
         enabled: budgetNotificationsEnabled,
       });
@@ -171,6 +174,11 @@ export default function AddTransactionScreen() {
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </Pressable>
         </Link>
+        {categories.filter((c) => c.kind === kind).length === 0 ? (
+          <Text style={styles.emptyHint}>
+            No {kind} categories yet. Tap above to create one.
+          </Text>
+        ) : null}
 
         <Text style={styles.label}>Note (optional)</Text>
         <TextInput
@@ -256,6 +264,7 @@ const styles = StyleSheet.create({
   categoryDot: { width: 10, height: 10, borderRadius: 5 },
   selectorText: { ...typography.body, fontWeight: "600" },
   selectorPlaceholder: { ...typography.bodyMuted },
+  emptyHint: { ...typography.bodyMuted, marginTop: -4 },
   noteInput: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,

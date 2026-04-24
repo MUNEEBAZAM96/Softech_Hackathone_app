@@ -6,12 +6,14 @@ import {
   Text,
   View,
 } from "react-native";
-import { useAtomValue } from "jotai";
 import { Link, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-import { budgetAlertPreferencesAtom, categoryBudgetsAtom, transactionsAtom } from "../../../atoms";
+import { useAtomValue } from "jotai";
+
+import { budgetAlertPreferencesAtom } from "../../../atoms";
 import { getCategoryById } from "../../../constants/categories";
+import { useFinanceData } from "../../../providers/FinanceDataProvider";
 import { colors, radius, shadow, space, type } from "../../../constants/theme";
 import {
   buildBudgetAlertItem,
@@ -20,14 +22,15 @@ import {
 } from "../../../services/budgetAlertService";
 import { formatCurrency } from "../../../utils/format";
 
-const ctx: BudgetAlertContext = {
-  getCategoryName: (id) => getCategoryById(id)?.name ?? "Category",
-};
-
 export default function BudgetsIndexScreen() {
-  const budgets = useAtomValue(categoryBudgetsAtom);
-  const transactions = useAtomValue(transactionsAtom);
+  const { budgets, transactions, categories } = useFinanceData();
   const prefs = useAtomValue(budgetAlertPreferencesAtom);
+  const ctx: BudgetAlertContext = useMemo(
+    () => ({
+      getCategoryName: (id) => getCategoryById(id, categories)?.name ?? "Category",
+    }),
+    [categories]
+  );
   const now = useMemo(() => new Date(), []);
 
   const rows = useMemo(() => {
@@ -37,7 +40,7 @@ export default function BudgetsIndexScreen() {
         budget: b,
         alert: buildBudgetAlertItem(transactions, b, prefs, ctx, now),
       }));
-  }, [budgets, transactions, prefs, now]);
+  }, [budgets, transactions, prefs, now, ctx]);
 
   return (
     <ScrollView
@@ -79,7 +82,7 @@ export default function BudgetsIndexScreen() {
       ) : (
         <View style={styles.list}>
           {rows.map(({ budget, alert }) => {
-            const name = getCategoryById(budget.categoryId)?.name ?? "Category";
+            const name = getCategoryById(budget.categoryId, categories)?.name ?? "Category";
             const tone =
               alert.level === "exceeded"
                 ? colors.danger

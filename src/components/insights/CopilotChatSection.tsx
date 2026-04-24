@@ -16,14 +16,12 @@ import { useAtom } from "jotai";
 
 import {
   budgetAlertPreferencesAtom,
-  categoryBudgetsAtom,
   copilotErrorAtom,
   copilotInputDraftAtom,
   copilotIsTypingAtom,
   copilotMessagesAtom,
-  savingsGoalsAtom,
-  transactionsAtom,
 } from "../../atoms";
+import { useFinanceData } from "../../providers/FinanceDataProvider";
 import { COPILOT_QUICK_ACTIONS } from "../../constants/copilotQuickActions";
 import { useAppTheme } from "../../providers/ThemeProvider";
 import { buildCopilotContextSnapshot } from "../../services/copilotContextService";
@@ -40,9 +38,7 @@ export default function CopilotChatSection() {
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<CopilotMessage>>(null);
 
-  const [transactions] = useAtom(transactionsAtom);
-  const [goals] = useAtom(savingsGoalsAtom);
-  const [budgets] = useAtom(categoryBudgetsAtom);
+  const { transactions, goals, budgets, categories } = useFinanceData();
   const [prefs] = useAtom(budgetAlertPreferencesAtom);
   const [messages, setMessages] = useAtom(copilotMessagesAtom);
   const [isTyping, setIsTyping] = useAtom(copilotIsTypingAtom);
@@ -247,7 +243,9 @@ export default function CopilotChatSection() {
           transactions,
           goals,
           budgets,
-          prefs
+          prefs,
+          new Date(),
+          categories
         );
         const reply = await sendCopilotMessage({
           message: text,
@@ -275,6 +273,7 @@ export default function CopilotChatSection() {
     },
     [
       budgets,
+      categories,
       goals,
       isTyping,
       messages,

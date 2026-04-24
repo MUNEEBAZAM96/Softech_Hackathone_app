@@ -1,3 +1,11 @@
+export type AppUser = {
+  id: string;
+  name: string;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type TransactionKind = "income" | "expense";
 
 export type Category = {

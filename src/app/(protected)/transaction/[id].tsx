@@ -1,19 +1,17 @@
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, router, useLocalSearchParams } from "expo-router";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 
 import {
   budgetAlertPreferencesAtom,
   budgetNotificationsEnabledAtom,
-  categoryBudgetsAtom,
   goalNotificationsEnabledAtom,
-  savingsGoalsAtom,
-  transactionsAtom,
 } from "../../../atoms";
 import { colors, radius, spacing, typography } from "../../../constants/theme";
 import { getCategoryById } from "../../../constants/categories";
+import { useFinanceData } from "../../../providers/FinanceDataProvider";
 import { getDatabase } from "../../../db/client";
 import { deleteTransactionById } from "../../../db/transactionsRepo";
 import { maybeNotifyBudgetAlerts } from "../../../services/budgetNotificationService";
@@ -22,10 +20,7 @@ import { formatCurrency, formatDate } from "../../../utils/format";
 
 export default function TransactionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const transactions = useAtomValue(transactionsAtom);
-  const setTransactions = useSetAtom(transactionsAtom);
-  const budgets = useAtomValue(categoryBudgetsAtom);
-  const goals = useAtomValue(savingsGoalsAtom);
+  const { transactions, budgets, goals, categories, refresh } = useFinanceData();
   const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
   const budgetNotificationsEnabled = useAtomValue(budgetNotificationsEnabledAtom);
   const goalNotificationsEnabled = useAtomValue(goalNotificationsEnabledAtom);
@@ -43,7 +38,7 @@ export default function TransactionDetailScreen() {
     );
   }
 
-  const category = getCategoryById(transaction.categoryId);
+  const category = getCategoryById(transaction.categoryId, categories);
   const isIncome = transaction.kind === "income";
   const amountColor = isIncome ? colors.income : colors.expense;
 
@@ -60,8 +55,8 @@ export default function TransactionDetailScreen() {
             try {
               const db = await getDatabase();
               await deleteTransactionById(db, transaction.id);
+              await refresh();
               const next = transactions.filter((t) => t.id !== transaction.id);
-              setTransactions(next);
               void maybeNotifyBudgetAlerts(next, budgets, budgetPrefs, {
                 enabled: budgetNotificationsEnabled,
               });

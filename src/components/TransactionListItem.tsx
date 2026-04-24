@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Link } from "expo-router";
 
 import { useAppTheme } from "../providers/ThemeProvider";
+import { useFinanceData } from "../providers/FinanceDataProvider";
 import { getCategoryById } from "../constants/categories";
 import { formatCurrency, formatDate } from "../utils/format";
 import type { Transaction } from "../types";
@@ -14,7 +15,8 @@ type Props = {
 
 export default function TransactionListItem({ transaction }: Props) {
   const { colors, type, space, radius } = useAppTheme();
-  const category = getCategoryById(transaction.categoryId);
+  const { categories } = useFinanceData();
+  const category = getCategoryById(transaction.categoryId, categories);
   const isIncome = transaction.kind === "income";
   const amountColor = isIncome ? colors.success : colors.danger;
   const amountPrefix = isIncome ? "+" : "-";

@@ -9,15 +9,14 @@ import {
   View,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 
 import {
   budgetAlertPreferencesAtom,
   budgetNotificationsEnabledAtom,
-  categoryBudgetsAtom,
-  transactionsAtom,
 } from "../../../atoms";
-import { categories } from "../../../constants/categories";
+import { getCategoriesByKind } from "../../../constants/categories";
+import { useFinanceData } from "../../../providers/FinanceDataProvider";
 import { colors, radius, space, type } from "../../../constants/theme";
 import { deleteBudgetById, updateBudget } from "../../../db/budgetsRepo";
 import { getDatabase } from "../../../db/client";
@@ -28,8 +27,7 @@ import {
 
 export default function EditBudgetScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [budgets, setBudgets] = useAtom(categoryBudgetsAtom);
-  const transactions = useAtomValue(transactionsAtom);
+  const { budgets, transactions, categories, refresh } = useFinanceData();
   const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
   const notificationsEnabled = useAtomValue(budgetNotificationsEnabledAtom);
   const row = useMemo(() => budgets.find((b) => b.id === id), [budgets, id]);
@@ -40,7 +38,7 @@ export default function EditBudgetScreen() {
     row ? String(row.limitAmount) : ""
   );
 
-  const expenseCats = categories.filter((c) => c.kind === "expense");
+  const expenseCats = getCategoriesByKind("expense", categories);
 
   if (!row) {
     return (
@@ -84,10 +82,10 @@ export default function EditBudgetScreen() {
     try {
       const db = await getDatabase();
       await updateBudget(db, updatedBudget);
+      await refresh();
       const next = budgets.map((b) =>
         b.id === row.id ? updatedBudget : b
       );
-      setBudgets(next);
       await clearBudgetNotificationDedupe({
         monthKey: row.monthKey,
         categoryId: row.categoryId,
@@ -118,8 +116,8 @@ export default function EditBudgetScreen() {
           try {
             const db = await getDatabase();
             await deleteBudgetById(db, row.id);
+            await refresh();
             const next = budgets.filter((b) => b.id !== row.id);
-            setBudgets(next);
             await clearBudgetNotificationDedupe({
               monthKey: row.monthKey,
               categoryId: row.categoryId,
@@ -143,6 +141,14 @@ export default function EditBudgetScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <Text style={styles.label}>Category</Text>
+      {expenseCats.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyTitle}>No expense categories found</Text>
+          <Text style={styles.emptyHint}>
+            Create an expense category first, then edit this budget.
+          </Text>
+        </View>
+      ) : null}
       <View style={styles.chips}>
         {expenseCats.map((c) => (
           <Pressable
@@ -183,7 +189,11 @@ export default function EditBudgetScreen() {
         style={styles.input}
         placeholderTextColor={colors.textMuted}
       />
-      <Pressable onPress={save} style={styles.save}>
+      <Pressable
+        onPress={save}
+        disabled={expenseCats.length === 0}
+        style={[styles.save, expenseCats.length === 0 && styles.saveDisabled]}
+      >
         <Text style={styles.saveText}>Save changes</Text>
       </Pressable>
       <Pressable onPress={remove} style={styles.danger}>
@@ -207,6 +217,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   chipText: { ...type.caption, color: colors.text },
+  emptyWrap: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: space.s16,
+    gap: space.s8,
+  },
+  emptyTitle: { ...type.bodyMedium, color: colors.text },
+  emptyHint: { ...type.caption, color: colors.textMuted },
   input: {
     ...type.body,
     backgroundColor: colors.surface,
@@ -223,6 +243,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   saveText: { ...type.bodyMedium, color: colors.surface },
+  saveDisabled: { opacity: 0.45 },
   danger: {
     marginTop: space.s8,
     paddingVertical: space.s16,
