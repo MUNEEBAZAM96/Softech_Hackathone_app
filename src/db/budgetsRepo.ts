@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
 import type { CategoryBudget } from "../types";
-import { LOCAL_USER_ID } from "./constants";
+import { requireFinanceUserId } from "./userIdGuard";
 
 type BudgetRow = {
   id: string;
@@ -24,14 +24,15 @@ function mapBudgetRow(row: BudgetRow): CategoryBudget {
 
 export async function listBudgets(
   db: SQLiteDatabase,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<CategoryBudget[]> {
+  const uid = requireFinanceUserId(userId);
   const rows = await db.getAllAsync<BudgetRow>(
     `SELECT id, category_id, month_key, limit_amount, created_at, updated_at
      FROM budgets
      WHERE user_id = ?
      ORDER BY month_key DESC, created_at DESC`,
-    [userId]
+    [uid]
   );
   return rows
     .filter((r) => r.category_id != null)
@@ -41,8 +42,9 @@ export async function listBudgets(
 export async function insertBudget(
   db: SQLiteDatabase,
   budget: CategoryBudget,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<void> {
+  const uid = requireFinanceUserId(userId);
   const updatedAt = new Date().toISOString();
   await db.runAsync(
     `INSERT INTO budgets
@@ -50,7 +52,7 @@ export async function insertBudget(
      VALUES (?, ?, ?, ?, ?, NULL, ?, ?)`,
     [
       budget.id,
-      userId,
+      uid,
       budget.categoryId,
       budget.monthKey,
       budget.limitAmount,
@@ -63,8 +65,9 @@ export async function insertBudget(
 export async function updateBudget(
   db: SQLiteDatabase,
   budget: CategoryBudget,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<void> {
+  const uid = requireFinanceUserId(userId);
   const updatedAt = new Date().toISOString();
   await db.runAsync(
     `UPDATE budgets
@@ -76,7 +79,7 @@ export async function updateBudget(
       budget.limitAmount,
       updatedAt,
       budget.id,
-      userId,
+      uid,
     ]
   );
 }
@@ -84,21 +87,23 @@ export async function updateBudget(
 export async function deleteBudgetById(
   db: SQLiteDatabase,
   id: string,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<void> {
+  const uid = requireFinanceUserId(userId);
   await db.runAsync("DELETE FROM budgets WHERE id = ? AND user_id = ?", [
     id,
-    userId,
+    uid,
   ]);
 }
 
 export async function countBudgets(
   db: SQLiteDatabase,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<number> {
+  const uid = requireFinanceUserId(userId);
   const row = await db.getFirstAsync<{ c: number }>(
     "SELECT COUNT(1) as c FROM budgets WHERE user_id = ?",
-    [userId]
+    [uid]
   );
   return Number(row?.c ?? 0);
 }

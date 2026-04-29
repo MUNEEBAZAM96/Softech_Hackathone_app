@@ -1,4 +1,4 @@
-import { useSignIn } from "@clerk/clerk-expo";
+import { useSignIn, useSSO } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { DotLottie } from "@lottiefiles/dotlottie-react-native";
 import Constants, { ExecutionEnvironment } from "expo-constants";
@@ -20,10 +20,13 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
+import { continueWithGoogleFlow } from "../../auth/continueWithGoogle";
 import {
   AuthFormCard,
   AuthHaloShell,
+  AuthOrDivider,
   AuthPrimaryButton,
+  ContinueWithGoogleButton,
   PremiumAuthField,
 } from "../../components/auth/premiumAuth";
 import { useAppTheme } from "../../providers/ThemeProvider";
@@ -38,6 +41,7 @@ const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function SignInScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
+  const { startSSOFlow } = useSSO();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors, type, space, resolvedMode } = useAppTheme();
@@ -45,6 +49,7 @@ export default function SignInScreen() {
   const [emailAddress, setEmailAddress] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const [oauthLoading, setOauthLoading] = React.useState(false);
   const [lottieFailed, setLottieFailed] = React.useState(false);
   const [inlineError, setInlineError] = React.useState<string | null>(null);
 
@@ -70,7 +75,34 @@ export default function SignInScreen() {
     } finally {
       setLoading(false);
     }
-  }, [isLoaded, emailAddress, password]);
+  }, [isLoaded, emailAddress, password, router, setActive, signIn]);
+
+  const onContinueWithGoogle = React.useCallback(async () => {
+    setInlineError(null);
+    setOauthLoading(true);
+    try {
+      const result = await continueWithGoogleFlow(startSSOFlow, setActive);
+      if (result.ok) {
+        router.replace("/");
+        return;
+      }
+      if (result.reason === "cancelled") {
+        setInlineError("Google sign-in was cancelled.");
+        return;
+      }
+      if (result.reason === "not_ready") {
+        setInlineError("Please wait a moment and try again.");
+        return;
+      }
+      setInlineError(
+        result.reason === "clerk_error" || result.reason === "no_session"
+          ? result.message
+          : "Please try again."
+      );
+    } finally {
+      setOauthLoading(false);
+    }
+  }, [router, setActive, startSSOFlow]);
 
   const haloBg =
     resolvedMode === "dark"
@@ -206,6 +238,14 @@ export default function SignInScreen() {
               Sign in to continue tracking your money
             </Text>
 
+            <ContinueWithGoogleButton
+              onPress={onContinueWithGoogle}
+              loading={oauthLoading}
+              disabled={!isLoaded || loading}
+            />
+
+            <AuthOrDivider />
+
             <PremiumAuthField
               icon="mail-outline"
               value={emailAddress}
@@ -239,7 +279,7 @@ export default function SignInScreen() {
               loadingLabel="Signing in…"
               loading={loading}
               onPress={onSignInPress}
-              disabled={loading}
+              disabled={loading || oauthLoading}
             />
 
             <View style={styles.footer}>

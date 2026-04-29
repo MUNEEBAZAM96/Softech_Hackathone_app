@@ -1,6 +1,6 @@
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Stack, router, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams } from "expo-router";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 
@@ -17,10 +17,12 @@ import { deleteTransactionById } from "../../../db/transactionsRepo";
 import { maybeNotifyBudgetAlerts } from "../../../services/budgetNotificationService";
 import { maybeNotifyGoalMilestones } from "../../../services/goalNotificationService";
 import { formatCurrency, formatDate } from "../../../utils/format";
+import { safeBack } from "../../../utils/navigation";
 
 export default function TransactionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { transactions, budgets, goals, categories, refresh } = useFinanceData();
+  const { transactions, budgets, goals, categories, refresh, userId } =
+    useFinanceData();
   const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
   const budgetNotificationsEnabled = useAtomValue(budgetNotificationsEnabledAtom);
   const goalNotificationsEnabled = useAtomValue(goalNotificationsEnabledAtom);
@@ -52,9 +54,13 @@ export default function TransactionDetailScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
+            if (!userId) {
+              Alert.alert("Session", "Please sign in again.");
+              return;
+            }
             try {
               const db = await getDatabase();
-              await deleteTransactionById(db, transaction.id);
+              await deleteTransactionById(db, transaction.id, userId);
               await refresh();
               const next = transactions.filter((t) => t.id !== transaction.id);
               void maybeNotifyBudgetAlerts(next, budgets, budgetPrefs, {
@@ -63,7 +69,7 @@ export default function TransactionDetailScreen() {
               void maybeNotifyGoalMilestones(next, goals, {
                 enabled: goalNotificationsEnabled,
               });
-              router.back();
+              safeBack();
             } catch {
               Alert.alert(
                 "Delete failed",

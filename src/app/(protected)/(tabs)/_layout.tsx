@@ -15,6 +15,7 @@ import {
 } from "react-native";
 
 import { useAppTheme } from "../../../providers/ThemeProvider";
+import QuickAddSheet from "../../../components/QuickAddSheet";
 
 const HIDDEN_TAB_NAMES = new Set(["spending-calendar"]);
 
@@ -52,6 +53,7 @@ type CustomTabBarProps = {
     emit: (e: object) => { defaultPrevented?: boolean };
     navigate: (name: string) => void;
   };
+  onOpenQuickAdd: () => void;
 };
 
 /** Single icon + label tab with scale / lift animations. */
@@ -237,7 +239,7 @@ function AnimatedFabItem({
   );
 }
 
-function CustomTabBar({ state, navigation }: CustomTabBarProps) {
+function CustomTabBar({ state, navigation, onOpenQuickAdd }: CustomTabBarProps) {
   const { colors, resolvedMode, type } = useAppTheme();
   const [layouts, setLayouts] = React.useState<
     Record<string, LayoutRectangle | undefined>
@@ -377,6 +379,11 @@ function CustomTabBar({ state, navigation }: CustomTabBarProps) {
 
             const onPress = () => {
               triggerTabHaptics();
+              if (isCenter) {
+                // Open Quick Add sheet instead of navigating to the tab
+                onOpenQuickAdd();
+                return;
+              }
               const event = navigation.emit({
                 type: "tabPress",
                 target: route.key,
@@ -502,34 +509,52 @@ const styles = StyleSheet.create({
 
 function TabsNavigator() {
   const { colors } = useAppTheme();
+  const [quickAddVisible, setQuickAddVisible] = React.useState(false);
+
+  const openQuickAdd = React.useCallback(() => {
+    setQuickAddVisible(true);
+  }, []);
+
+  const closeQuickAdd = React.useCallback(() => {
+    setQuickAddVisible(false);
+  }, []);
 
   return (
-    <Tabs
-      tabBar={(props) => <CustomTabBar {...(props as CustomTabBarProps)} />}
-      screenOptions={{
-        headerStyle: { backgroundColor: colors.surface },
-        headerTitleStyle: { color: colors.text, fontWeight: "700" },
-        headerShadowVisible: false,
-      }}
-    >
-      <Tabs.Screen name="index" options={{ title: "Dashboard" }} />
-      <Tabs.Screen name="history" options={{ title: "History" }} />
-      <Tabs.Screen name="add" options={{ title: "Add" }} />
-      <Tabs.Screen name="insights" options={{ title: "AI Copilot" }} />
-      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
-      <Tabs.Screen
-        name="spending-calendar"
-        options={{
-          title: "Spending calendar",
-          href: null,
-          headerLeft: () => (
-            <Pressable onPress={() => router.replace("/")}>
-              <Ionicons name="chevron-back" size={22} color={colors.primary} />
-            </Pressable>
-          ),
+    <>
+      <Tabs
+        tabBar={(props) => (
+          <CustomTabBar
+            state={props.state as CustomTabBarProps["state"]}
+            navigation={props.navigation as CustomTabBarProps["navigation"]}
+            onOpenQuickAdd={openQuickAdd}
+          />
+        )}
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.surface },
+          headerTitleStyle: { color: colors.text, fontWeight: "700" },
+          headerShadowVisible: false,
         }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen name="index" options={{ title: "Dashboard" }} />
+        <Tabs.Screen name="history" options={{ title: "History" }} />
+        <Tabs.Screen name="add" options={{ title: "Add", href: null }} />
+        <Tabs.Screen name="insights" options={{ title: "AI Copilot" }} />
+        <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+        <Tabs.Screen
+          name="spending-calendar"
+          options={{
+            title: "Spending calendar",
+            href: null,
+            headerLeft: () => (
+              <Pressable onPress={() => router.replace("/")}>
+                <Ionicons name="chevron-back" size={22} color={colors.primary} />
+              </Pressable>
+            ),
+          }}
+        />
+      </Tabs>
+      <QuickAddSheet visible={quickAddVisible} onClose={closeQuickAdd} />
+    </>
   );
 }
 

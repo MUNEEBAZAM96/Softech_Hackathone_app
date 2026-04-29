@@ -9,15 +9,20 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { useSetAtom } from "jotai";
+import { useAtom } from "jotai";
 
 import { selectedCategoryAtom } from "../../atoms";
 import { useFinanceData } from "../../providers/FinanceDataProvider";
 import { getDatabase } from "../../db/client";
-import { insertCategory } from "../../db/categoriesRepo";
+import {
+  categoryExistsByNameAndKind,
+  countCategoryUsage,
+  deleteCategoryById,
+  insertCategory,
+} from "../../db/categoriesRepo";
 import { colors, radius, spacing, typography } from "../../constants/theme";
 import { createLocalId } from "../../utils/id";
+import { safeBack } from "../../utils/navigation";
 import type { Category, TransactionKind } from "../../types";
 
 const KINDS: { id: TransactionKind; label: string }[] = [
@@ -30,8 +35,8 @@ export default function CategorySelectorScreen() {
   const [kind, setKind] = useState<TransactionKind>("expense");
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
-  const setSelected = useSetAtom(selectedCategoryAtom);
-  const { categories, refresh } = useFinanceData();
+  const [selectedCategory, setSelected] = useAtom(selectedCategoryAtom);
+  const { categories, refresh, userId } = useFinanceData();
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -42,9 +47,14 @@ export default function CategorySelectorScreen() {
     );
   }, [search, kind, categories]);
 
+  const customActionLabel = useMemo(
+    () => `Other (Create custom ${kind} category)`,
+    [kind]
+  );
+
   const onSelect = (category: Category) => {
     setSelected(category);
-    router.back();
+    safeBack();
   };
 
   const onCreateCategory = async () => {
@@ -63,18 +73,73 @@ export default function CategorySelectorScreen() {
       icon: fallbackIcon,
       color: fallbackColor,
     };
+    if (!userId) {
+      Alert.alert("Session", "Please sign in again to save.");
+      return;
+    }
     try {
       const db = await getDatabase();
-      await insertCategory(db, newCategory);
+      const exists = await categoryExistsByNameAndKind(db, name, kind, userId);
+      if (exists) {
+        Alert.alert(
+          "Already exists",
+          `A ${kind} category named "${name}" already exists.`
+        );
+        return;
+      }
+      await insertCategory(db, newCategory, userId);
       await refresh();
       setSelected(newCategory);
-      router.back();
+      setIsCreating(false);
+      setNewName("");
+      safeBack();
     } catch {
       Alert.alert(
         "Create failed",
         "Could not save this category. Please try again."
       );
     }
+  };
+
+  const onDeleteCategory = (category: Category) => {
+    Alert.alert(
+      "Delete category",
+      `Delete "${category.name}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            if (!userId) {
+              Alert.alert("Session", "Please sign in again.");
+              return;
+            }
+            try {
+              const db = await getDatabase();
+              const usage = await countCategoryUsage(db, category.id, userId);
+              if (usage.transactions > 0 || usage.budgets > 0) {
+                Alert.alert(
+                  "Category in use",
+                  "This category is linked to transactions or budgets. Reassign or remove those first."
+                );
+                return;
+              }
+              await deleteCategoryById(db, category.id, userId);
+              if (selectedCategory?.id === category.id) {
+                setSelected(null);
+              }
+              await refresh();
+            } catch {
+              Alert.alert(
+                "Delete failed",
+                "Could not delete this category. Please try again."
+              );
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -117,45 +182,63 @@ export default function CategorySelectorScreen() {
         })}
       </View>
 
-      {filtered.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <Text style={styles.emptyTitle}>No categories yet</Text>
-          <Text style={styles.emptyHint}>
-            Create your first {kind} category to continue.
-          </Text>
-          {!isCreating ? (
+      <Pressable
+        style={styles.otherRow}
+        onPress={() => setIsCreating(true)}
+        accessibilityRole="button"
+        accessibilityLabel={customActionLabel}
+      >
+        <View style={[styles.iconWrap, { backgroundColor: `${colors.primary}14` }]}>
+          <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+        </View>
+        <View style={styles.otherBody}>
+          <Text style={styles.otherTitle}>Other (Create custom)</Text>
+          <Text style={styles.otherHint}>Type your own category and reuse it later</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+      </Pressable>
+
+      {isCreating ? (
+        <View style={styles.createCard}>
+          <TextInput
+            placeholder="Category name"
+            placeholderTextColor={colors.textMuted}
+            value={newName}
+            onChangeText={setNewName}
+            style={styles.createInput}
+            autoFocus
+            accessibilityLabel="Custom category name"
+          />
+          <View style={styles.createActions}>
+            <Pressable
+              style={styles.cancelBtn}
+              onPress={() => {
+                setIsCreating(false);
+                setNewName("");
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel custom category"
+            >
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </Pressable>
             <Pressable
               style={styles.createBtn}
-              onPress={() => setIsCreating(true)}
+              onPress={onCreateCategory}
+              accessibilityRole="button"
+              accessibilityLabel="Save custom category"
             >
-              <Text style={styles.createBtnText}>Create Category</Text>
+              <Text style={styles.createBtnText}>Save</Text>
             </Pressable>
-          ) : (
-            <View style={styles.createCard}>
-              <TextInput
-                placeholder="Category name"
-                placeholderTextColor={colors.textMuted}
-                value={newName}
-                onChangeText={setNewName}
-                style={styles.createInput}
-                autoFocus
-              />
-              <View style={styles.createActions}>
-                <Pressable
-                  style={styles.cancelBtn}
-                  onPress={() => {
-                    setIsCreating(false);
-                    setNewName("");
-                  }}
-                >
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
-                </Pressable>
-                <Pressable style={styles.createBtn} onPress={onCreateCategory}>
-                  <Text style={styles.createBtnText}>Save</Text>
-                </Pressable>
-              </View>
-            </View>
-          )}
+          </View>
+        </View>
+      ) : null}
+
+      {filtered.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyTitle}>No {kind} categories found</Text>
+          <Text style={styles.emptyHint}>
+            Use Other (Create custom) to add your first {kind} category.
+          </Text>
         </View>
       ) : null}
 
@@ -177,11 +260,18 @@ export default function CategorySelectorScreen() {
               />
             </View>
             <Text style={styles.rowText}>{item.name}</Text>
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color={colors.textMuted}
-            />
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                onDeleteCategory(item);
+              }}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={`Delete ${item.name}`}
+              style={styles.deleteBtn}
+            >
+              <Ionicons name="trash-outline" size={18} color={colors.danger} />
+            </Pressable>
           </Pressable>
         )}
         contentContainerStyle={styles.listContent}
@@ -234,6 +324,21 @@ const styles = StyleSheet.create({
   },
   kindText: { ...typography.body, fontWeight: "600", color: colors.textMuted },
   kindTextActive: { color: "#FFFFFF" },
+  otherRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  otherBody: { flex: 1 },
+  otherTitle: { ...typography.body, fontWeight: "700", color: colors.primary },
+  otherHint: { ...typography.caption, color: colors.textSecondary },
   listContent: { paddingBottom: spacing.xxl },
   emptyWrap: {
     padding: spacing.lg,
@@ -294,4 +399,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   rowText: { ...typography.body, fontWeight: "600", flex: 1 },
+  deleteBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.pill,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: `${colors.danger}12`,
+  },
 });

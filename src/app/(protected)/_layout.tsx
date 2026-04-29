@@ -32,6 +32,13 @@ function ProtectedStack() {
           animation: "slide_from_right",
         }}
       />
+      <Stack.Screen
+        name="scan/review"
+        options={{
+          title: "Review Receipt",
+          animation: "slide_from_right",
+        }}
+      />
     </Stack>
   );
 }

@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useLocalSearchParams, router } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useAtomValue } from "jotai";
 
 import {
@@ -24,10 +24,11 @@ import {
   clearBudgetNotificationDedupe,
   maybeNotifyBudgetAlerts,
 } from "../../../services/budgetNotificationService";
+import { safeBack } from "../../../utils/navigation";
 
 export default function EditBudgetScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { budgets, transactions, categories, refresh } = useFinanceData();
+  const { budgets, transactions, categories, refresh, userId } = useFinanceData();
   const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
   const notificationsEnabled = useAtomValue(budgetNotificationsEnabledAtom);
   const row = useMemo(() => budgets.find((b) => b.id === id), [budgets, id]);
@@ -44,7 +45,7 @@ export default function EditBudgetScreen() {
     return (
       <View style={styles.missing}>
         <Text style={styles.missingText}>Budget not found.</Text>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => safeBack()}>
           <Text style={styles.link}>Go back</Text>
         </Pressable>
       </View>
@@ -79,9 +80,14 @@ export default function EditBudgetScreen() {
       limitAmount: lim,
     };
 
+    if (!userId) {
+      Alert.alert("Session", "Please sign in again to save.");
+      return;
+    }
+
     try {
       const db = await getDatabase();
-      await updateBudget(db, updatedBudget);
+      await updateBudget(db, updatedBudget, userId);
       await refresh();
       const next = budgets.map((b) =>
         b.id === row.id ? updatedBudget : b
@@ -97,7 +103,7 @@ export default function EditBudgetScreen() {
       void maybeNotifyBudgetAlerts(transactions, next, budgetPrefs, {
         enabled: notificationsEnabled,
       });
-      router.back();
+      safeBack();
     } catch {
       Alert.alert(
         "Save failed",
@@ -114,15 +120,16 @@ export default function EditBudgetScreen() {
         style: "destructive",
         onPress: async () => {
           try {
+            if (!userId) return;
             const db = await getDatabase();
-            await deleteBudgetById(db, row.id);
+            await deleteBudgetById(db, row.id, userId);
             await refresh();
             const next = budgets.filter((b) => b.id !== row.id);
             await clearBudgetNotificationDedupe({
               monthKey: row.monthKey,
               categoryId: row.categoryId,
             });
-            router.back();
+            safeBack();
           } catch {
             Alert.alert(
               "Delete failed",

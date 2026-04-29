@@ -203,3 +203,43 @@ export type DailyTipContext = {
 export type DailyTipApiResponse = {
   tip: string;
 };
+
+export type ReceiptParseCategoryContext = {
+  id: string;
+  name: string;
+  kind: TransactionKind;
+};
+
+export type ReceiptParseRequest = {
+  imageBase64: string;
+  mimeType: string;
+  currency?: string;
+  categories?: ReceiptParseCategoryContext[];
+};
+
+export type ReceiptDraft = {
+  amount: number | null;
+  kind: TransactionKind;
+  note: string;
+  merchant?: string;
+  dateIso: string | null;
+  suggestedCategoryName?: string;
+  suggestedCategoryKind?: TransactionKind;
+  confidence: number;
+};
+
+export type ReceiptParseResponse =
+  | {
+      ok: true;
+      draft: ReceiptDraft;
+    }
+  | {
+      ok: false;
+      code:
+        | "INVALID_IMAGE"
+        | "UNREADABLE_RECEIPT"
+        | "AI_PARSE_FAILED"
+        | "RATE_LIMITED"
+        | "SERVER_ERROR";
+      message: string;
+    };

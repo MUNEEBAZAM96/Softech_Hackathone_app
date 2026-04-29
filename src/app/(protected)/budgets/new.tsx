@@ -9,7 +9,6 @@ import {
   View,
 } from "react-native";
 import { useAtomValue } from "jotai";
-import { router } from "expo-router";
 
 import {
   budgetAlertPreferencesAtom,
@@ -26,9 +25,11 @@ import {
   maybeNotifyBudgetAlerts,
 } from "../../../services/budgetNotificationService";
 import { createLocalId } from "../../../utils/id";
+import { safeBack } from "../../../utils/navigation";
 
 export default function NewBudgetScreen() {
-  const { budgets: existing, transactions, categories, refresh } = useFinanceData();
+  const { budgets: existing, transactions, categories, refresh, userId } =
+    useFinanceData();
   const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
   const notificationsEnabled = useAtomValue(budgetNotificationsEnabledAtom);
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -63,16 +64,21 @@ export default function NewBudgetScreen() {
       createdAt: new Date().toISOString(),
     };
 
+    if (!userId) {
+      Alert.alert("Session", "Please sign in again to save.");
+      return;
+    }
+
     try {
       const db = await getDatabase();
-      await insertBudget(db, newBudget);
+      await insertBudget(db, newBudget, userId);
       await refresh();
       const next = [...existing, newBudget];
       await clearBudgetNotificationDedupe({ monthKey: key, categoryId });
       void maybeNotifyBudgetAlerts(transactions, next, budgetPrefs, {
         enabled: notificationsEnabled,
       });
-      router.back();
+      safeBack();
     } catch {
       Alert.alert(
         "Save failed",

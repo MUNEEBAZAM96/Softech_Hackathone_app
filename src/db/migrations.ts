@@ -1,8 +1,10 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
-import { LOCAL_USER_ID } from "./constants";
+import { LEGACY_LOCAL_USER_ID } from "./constants";
 
-const DB_VERSION = 2;
+/** After v1→v2 migration body completes. */
+const SCHEMA_VERSION_V2 = 2;
+const DB_VERSION = 3;
 
 type UserVersionRow = {
   user_version: number;
@@ -88,6 +90,9 @@ function createSchemaV2Sql(): string {
     );
     CREATE INDEX IF NOT EXISTS idx_budgets_user_month
       ON budgets (user_id, month_key);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_budgets_unique_user_month_category
+      ON budgets (user_id, month_key, IFNULL(category_id, ''));
   `;
 }
 
@@ -117,7 +122,7 @@ async function insertLocalUser(
   await db.runAsync(
     `INSERT OR IGNORE INTO users (id, name, currency, created_at, updated_at)
      VALUES (?, 'Me', 'PKR', ?, ?)`,
-    [LOCAL_USER_ID, when, when]
+    [LEGACY_LOCAL_USER_ID, when, when]
   );
 }
 
@@ -149,7 +154,7 @@ async function ensureOrphanCategories(
       `INSERT OR IGNORE INTO categories
         (id, user_id, name, type, icon, color, created_at, updated_at)
        VALUES (?, ?, ?, 'expense', 'ellipsis-horizontal-outline', '#64748B', ?, ?)`,
-      [r.category_id, LOCAL_USER_ID, `Category ${r.category_id}`, when, when]
+      [r.category_id, LEGACY_LOCAL_USER_ID, `Category ${r.category_id}`, when, when]
     );
   }
 }
@@ -164,8 +169,9 @@ async function migrateV1toV2(db: SQLiteDatabase): Promise<void> {
     : new Set<string>();
   if (txCol.has("user_id") && (await tableExists(db, "users"))) {
     const row = await db.getFirstAsync<UserVersionRow>("PRAGMA user_version");
-    if ((row?.user_version ?? 0) < DB_VERSION) {
-      await db.execAsync(`PRAGMA user_version = ${DB_VERSION};`);
+    const uv = row?.user_version ?? 0;
+    if (uv < SCHEMA_VERSION_V2) {
+      await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION_V2};`);
     }
     return;
   }
@@ -227,7 +233,7 @@ async function migrateV1toV2(db: SQLiteDatabase): Promise<void> {
           INSERT INTO transactions_v2
             (id, user_id, category_id, type, amount, note, date, created_at, updated_at)
           SELECT
-            id, '${LOCAL_USER_ID}', category_id, ${kindOrType},
+            id, '${LEGACY_LOCAL_USER_ID}', category_id, ${kindOrType},
             amount, note, date, created_at, created_at
           FROM transactions;
           DROP TABLE transactions;
@@ -260,7 +266,7 @@ async function migrateV1toV2(db: SQLiteDatabase): Promise<void> {
           INSERT INTO goals
             (id, user_id, title, target_amount, current_amount, due_date, starting_amount, monthly_contribution_goal, status, created_at, updated_at)
           SELECT
-            id, '${LOCAL_USER_ID}', title, target_amount, 0, deadline, starting_amount, monthly_contribution_goal, status, created_at, created_at
+            id, '${LEGACY_LOCAL_USER_ID}', title, target_amount, 0, deadline, starting_amount, monthly_contribution_goal, status, created_at, created_at
           FROM savings_goals;
           DROP TABLE savings_goals;`
         );
@@ -288,7 +294,7 @@ async function migrateV1toV2(db: SQLiteDatabase): Promise<void> {
           INSERT INTO budgets
             (id, user_id, category_id, month_key, limit_amount, spent_amount_cache, created_at, updated_at)
           SELECT
-            id, '${LOCAL_USER_ID}', category_id, month_key, limit_amount, NULL, created_at, created_at
+            id, '${LEGACY_LOCAL_USER_ID}', category_id, month_key, limit_amount, NULL, created_at, created_at
           FROM category_budgets;
           DROP TABLE category_budgets;`
         );
@@ -298,30 +304,58 @@ async function migrateV1toV2(db: SQLiteDatabase): Promise<void> {
       }
     }
 
+    await txn.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION_V2};`);
+  });
+}
+
+/** New install: schema only; Clerk user row is created by `ensureUserExists` on first session. */
+async function createFreshInstall(db: SQLiteDatabase): Promise<void> {
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    await txn.execAsync(createSchemaV2Sql());
     await txn.execAsync(`PRAGMA user_version = ${DB_VERSION};`);
   });
 }
 
-async function createFreshV2(db: SQLiteDatabase): Promise<void> {
-  const when = new Date().toISOString();
-  await db.withExclusiveTransactionAsync(async (txn) => {
-    await txn.execAsync(createSchemaV2Sql());
-    await insertLocalUser(txn, when);
-    await txn.execAsync(`PRAGMA user_version = ${DB_VERSION};`);
-  });
+/**
+ * v3: optional uniqueness for budgets per user/month/category (ignores duplicate rows if any).
+ */
+async function migrateV2toV3(db: SQLiteDatabase): Promise<void> {
+  try {
+    await db.execAsync(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_budgets_unique_user_month_category
+      ON budgets (user_id, month_key, IFNULL(category_id, ''));
+    `);
+  } catch (e) {
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[migrations] Could not create idx_budgets_unique_user_month_category (duplicate budgets?).",
+        e
+      );
+    }
+  }
+  await db.execAsync(`PRAGMA user_version = ${DB_VERSION};`);
 }
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {
-  const row = await db.getFirstAsync<UserVersionRow>("PRAGMA user_version");
-  const current = row?.user_version ?? 0;
+  let row = await db.getFirstAsync<UserVersionRow>("PRAGMA user_version");
+  let current = row?.user_version ?? 0;
   if (current >= DB_VERSION) return;
 
   const hasV1Tx = await tableExists(db, "transactions");
 
   if (current === 0 && !hasV1Tx) {
-    await createFreshV2(db);
+    await createFreshInstall(db);
     return;
   }
 
-  await migrateV1toV2(db);
+  if (current < SCHEMA_VERSION_V2) {
+    await migrateV1toV2(db);
+  }
+
+  row = await db.getFirstAsync<UserVersionRow>("PRAGMA user_version");
+  current = row?.user_version ?? 0;
+  if (current < DB_VERSION) {
+    await migrateV2toV3(db);
+  }
 }

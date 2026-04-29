@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
 import type { Transaction, TransactionKind } from "../types";
-import { LOCAL_USER_ID } from "./constants";
+import { requireFinanceUserId } from "./userIdGuard";
 
 type TransactionRow = {
   id: string;
@@ -28,14 +28,15 @@ function mapTransactionRow(row: TransactionRow): Transaction {
 
 export async function listTransactions(
   db: SQLiteDatabase,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<Transaction[]> {
+  const uid = requireFinanceUserId(userId);
   const rows = await db.getAllAsync<TransactionRow>(
     `SELECT id, type, amount, category_id, note, date, created_at, updated_at
      FROM transactions
      WHERE user_id = ?
      ORDER BY date DESC`,
-    [userId]
+    [uid]
   );
   return rows.map(mapTransactionRow);
 }
@@ -43,8 +44,9 @@ export async function listTransactions(
 export async function insertTransaction(
   db: SQLiteDatabase,
   tx: Transaction,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<void> {
+  const uid = requireFinanceUserId(userId);
   const updatedAt = new Date().toISOString();
   await db.runAsync(
     `INSERT INTO transactions
@@ -52,7 +54,7 @@ export async function insertTransaction(
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       tx.id,
-      userId,
+      uid,
       tx.categoryId,
       tx.kind,
       tx.amount,
@@ -67,8 +69,9 @@ export async function insertTransaction(
 export async function updateTransaction(
   db: SQLiteDatabase,
   tx: Transaction,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<void> {
+  const uid = requireFinanceUserId(userId);
   const updatedAt = new Date().toISOString();
   await db.runAsync(
     `UPDATE transactions
@@ -82,7 +85,7 @@ export async function updateTransaction(
       tx.date,
       updatedAt,
       tx.id,
-      userId,
+      uid,
     ]
   );
 }
@@ -90,21 +93,23 @@ export async function updateTransaction(
 export async function deleteTransactionById(
   db: SQLiteDatabase,
   id: string,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<void> {
+  const uid = requireFinanceUserId(userId);
   await db.runAsync("DELETE FROM transactions WHERE id = ? AND user_id = ?", [
     id,
-    userId,
+    uid,
   ]);
 }
 
 export async function countTransactions(
   db: SQLiteDatabase,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<number> {
+  const uid = requireFinanceUserId(userId);
   const row = await db.getFirstAsync<{ c: number }>(
     "SELECT COUNT(1) as c FROM transactions WHERE user_id = ?",
-    [userId]
+    [uid]
   );
   return Number(row?.c ?? 0);
 }

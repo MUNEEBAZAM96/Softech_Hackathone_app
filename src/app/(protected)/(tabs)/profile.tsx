@@ -19,6 +19,11 @@ import {
   goalNotificationsEnabledAtom,
 } from "../../../atoms";
 import { useAppTheme } from "../../../providers/ThemeProvider";
+import { getDatabase } from "../../../db/client";
+import {
+  WIPE_LOCAL_FINANCE_DATA_ON_SIGNOUT,
+  wipeFinanceDataForUser,
+} from "../../../db/privacyRepo";
 import {
   ensureNotificationPermission,
   initBudgetNotifications,
@@ -42,7 +47,7 @@ const THEME_OPTIONS: { id: ThemeMode; label: string; hint: string }[] = [
 
 export default function ProfileScreen() {
   const { user } = useUser();
-  const { signOut } = useAuth();
+  const { signOut, userId: authUserId } = useAuth();
   const { colors, type, space, radius, mode, setMode, resolvedMode } =
     useAppTheme();
   const insets = useSafeAreaInsets();
@@ -200,7 +205,23 @@ export default function ProfileScreen() {
   const confirmSignOut = () => {
     Alert.alert("Sign out", "Are you sure you want to sign out?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Sign Out", style: "destructive", onPress: () => signOut() },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: () => {
+          void (async () => {
+            try {
+              if (WIPE_LOCAL_FINANCE_DATA_ON_SIGNOUT && authUserId) {
+                const db = await getDatabase();
+                await wipeFinanceDataForUser(db, authUserId);
+              }
+            } catch {
+              /* best-effort; still sign out */
+            }
+            void signOut();
+          })();
+        },
+      },
     ]);
   };
 

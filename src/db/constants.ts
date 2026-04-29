@@ -1,2 +1,5 @@
-/** Single on-device user id for the local-first schema (multi-user can branch later). */
-export const LOCAL_USER_ID = "local";
+/**
+ * Legacy on-device user id from pre–Clerk single-user builds (migrations / one-time reassignment only).
+ * All new reads/writes must use Clerk `userId` via `requireFinanceUserId`.
+ */
+export const LEGACY_LOCAL_USER_ID = "local";

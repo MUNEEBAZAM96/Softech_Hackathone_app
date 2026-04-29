@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
 import type { Category, TransactionKind } from "../types";
-import { LOCAL_USER_ID } from "./constants";
+import { requireFinanceUserId } from "./userIdGuard";
 
 type CategoryRow = {
   id: string;
@@ -26,25 +26,27 @@ function mapRow(row: CategoryRow): Category {
 
 export async function listCategoriesForUser(
   db: SQLiteDatabase,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<Category[]> {
+  const uid = requireFinanceUserId(userId);
   const rows = await db.getAllAsync<CategoryRow>(
     `SELECT id, user_id, name, type, icon, color, created_at, updated_at
      FROM categories
      WHERE user_id = ?
      ORDER BY type ASC, name ASC`,
-    [userId]
+    [uid]
   );
   return rows.map(mapRow);
 }
 
 export async function countCategories(
   db: SQLiteDatabase,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<number> {
+  const uid = requireFinanceUserId(userId);
   const row = await db.getFirstAsync<{ c: number }>(
     "SELECT COUNT(1) as c FROM categories WHERE user_id = ?",
-    [userId]
+    [uid]
   );
   return Number(row?.c ?? 0);
 }
@@ -52,8 +54,9 @@ export async function countCategories(
 export async function insertCategory(
   db: SQLiteDatabase,
   category: Category,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<void> {
+  const uid = requireFinanceUserId(userId);
   const when = new Date().toISOString();
   await db.runAsync(
     `INSERT INTO categories
@@ -61,7 +64,7 @@ export async function insertCategory(
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       category.id,
-      userId,
+      uid,
       category.name,
       category.kind,
       category.icon,
@@ -70,4 +73,82 @@ export async function insertCategory(
       when,
     ]
   );
+}
+
+export async function insertManyCategories(
+  db: SQLiteDatabase,
+  categories: Category[],
+  userId: string
+): Promise<void> {
+  const uid = requireFinanceUserId(userId);
+  const when = new Date().toISOString();
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    for (const category of categories) {
+      await txn.runAsync(
+        `INSERT OR IGNORE INTO categories
+          (id, user_id, name, type, icon, color, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          category.id,
+          uid,
+          category.name,
+          category.kind,
+          category.icon,
+          category.color,
+          when,
+          when,
+        ]
+      );
+    }
+  });
+}
+
+export async function categoryExistsByNameAndKind(
+  db: SQLiteDatabase,
+  name: string,
+  kind: TransactionKind,
+  userId: string
+): Promise<boolean> {
+  const uid = requireFinanceUserId(userId);
+  const row = await db.getFirstAsync<{ c: number }>(
+    `SELECT COUNT(1) as c
+     FROM categories
+     WHERE user_id = ? AND type = ? AND LOWER(name) = LOWER(?)`,
+    [uid, kind, name.trim()]
+  );
+  return Number(row?.c ?? 0) > 0;
+}
+
+export async function countCategoryUsage(
+  db: SQLiteDatabase,
+  categoryId: string,
+  userId: string
+): Promise<{ transactions: number; budgets: number }> {
+  const uid = requireFinanceUserId(userId);
+  const [txRow, budgetRow] = await Promise.all([
+    db.getFirstAsync<{ c: number }>(
+      "SELECT COUNT(1) as c FROM transactions WHERE user_id = ? AND category_id = ?",
+      [uid, categoryId]
+    ),
+    db.getFirstAsync<{ c: number }>(
+      "SELECT COUNT(1) as c FROM budgets WHERE user_id = ? AND category_id = ?",
+      [uid, categoryId]
+    ),
+  ]);
+  return {
+    transactions: Number(txRow?.c ?? 0),
+    budgets: Number(budgetRow?.c ?? 0),
+  };
+}
+
+export async function deleteCategoryById(
+  db: SQLiteDatabase,
+  categoryId: string,
+  userId: string
+): Promise<void> {
+  const uid = requireFinanceUserId(userId);
+  await db.runAsync("DELETE FROM categories WHERE id = ? AND user_id = ?", [
+    categoryId,
+    uid,
+  ]);
 }

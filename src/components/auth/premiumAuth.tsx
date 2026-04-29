@@ -310,6 +310,109 @@ export function AuthPrimaryButton({
   );
 }
 
+type AuthOrDividerProps = {
+  label?: string;
+};
+
+/** Centered “or” label between hairlines; use between SSO and email/password. */
+export function AuthOrDivider({ label = "or" }: AuthOrDividerProps) {
+  const { colors, space, type } = useAppTheme();
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.s16,
+        marginVertical: space.s16,
+      }}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <View
+        style={{
+          flex: 1,
+          height: StyleSheet.hairlineWidth,
+          backgroundColor: colors.border,
+        }}
+      />
+      <Text style={[type.captionBold, { color: colors.textMuted }]}>
+        {label}
+      </Text>
+      <View
+        style={{
+          flex: 1,
+          height: StyleSheet.hairlineWidth,
+          backgroundColor: colors.border,
+        }}
+      />
+    </View>
+  );
+}
+
+type ContinueWithGoogleButtonProps = {
+  onPress: () => void;
+  loading?: boolean;
+  disabled?: boolean;
+};
+
+/**
+ * Secondary full-width control for Clerk Google SSO; matches premium auth card styling.
+ */
+export function ContinueWithGoogleButton({
+  onPress,
+  loading = false,
+  disabled = false,
+}: ContinueWithGoogleButtonProps) {
+  const { colors, radius, space, type } = useAppTheme();
+  const busy = loading || disabled;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Continue with Google"
+      accessibilityState={{ busy: loading, disabled: busy }}
+      onPress={onPress}
+      disabled={busy}
+      style={{
+        minHeight: 52,
+        width: "100%",
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: space.s8,
+        paddingHorizontal: space.s16,
+        backgroundColor: colors.surface,
+        borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: colors.border,
+        opacity: busy ? 0.72 : 1,
+        ...(Platform.OS === "web"
+          ? { alignSelf: "stretch", minWidth: 0 }
+          : null),
+      }}
+    >
+      {loading ? (
+        <ActivityIndicator color={colors.primary} size="small" />
+      ) : (
+        <Ionicons name="logo-google" size={22} color="#4285F4" />
+      )}
+      <Text
+        style={[
+          type.body,
+          {
+            fontWeight: "600",
+            color: colors.text,
+            flexShrink: 1,
+            textAlign: "center",
+          },
+        ]}
+        numberOfLines={1}
+      >
+        {loading ? "Connecting…" : "Continue with Google"}
+      </Text>
+    </Pressable>
+  );
+}
+
 type AuthHaloShellProps = {
   haloBg: string;
   haloBorder: string;

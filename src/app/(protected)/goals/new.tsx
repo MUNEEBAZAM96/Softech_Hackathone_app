@@ -9,7 +9,6 @@ import {
   View,
 } from "react-native";
 import { useAtomValue } from "jotai";
-import { router } from "expo-router";
 
 import { goalNotificationsEnabledAtom } from "../../../atoms";
 import { colors, radius, space, type } from "../../../constants/theme";
@@ -18,9 +17,10 @@ import { insertGoal } from "../../../db/goalsRepo";
 import { useFinanceData } from "../../../providers/FinanceDataProvider";
 import { maybeNotifyGoalMilestones } from "../../../services/goalNotificationService";
 import { createLocalId } from "../../../utils/id";
+import { safeBack } from "../../../utils/navigation";
 
 export default function NewGoalScreen() {
-  const { goals, transactions, refresh } = useFinanceData();
+  const { goals, transactions, refresh, userId } = useFinanceData();
   const goalNotificationsEnabled = useAtomValue(goalNotificationsEnabledAtom);
   const [title, setTitle] = useState("");
   const [target, setTarget] = useState("");
@@ -61,15 +61,20 @@ export default function NewGoalScreen() {
       status: "active" as const,
     };
 
+    if (!userId) {
+      Alert.alert("Session", "Please sign in again to save.");
+      return;
+    }
+
     try {
       const db = await getDatabase();
-      await insertGoal(db, newGoal);
+      await insertGoal(db, newGoal, userId);
       await refresh();
       const next = [...goals, newGoal];
       void maybeNotifyGoalMilestones(transactions, next, {
         enabled: goalNotificationsEnabled,
       });
-      router.back();
+      safeBack();
     } catch {
       Alert.alert("Save failed", "Could not store this goal. Please try again.");
     }

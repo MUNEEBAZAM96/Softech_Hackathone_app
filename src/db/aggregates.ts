@@ -1,17 +1,16 @@
 import { summarize } from "../services/transactionService";
 import type { Transaction, TransactionKind } from "../types";
 import { getDatabase } from "./client";
-import { LOCAL_USER_ID } from "./constants";
 import { runMigrations } from "./migrations";
 import { listTransactions } from "./transactionsRepo";
+import { requireFinanceUserId } from "./userIdGuard";
 
 /** Net balance and monthly-style rollups (reuses in-app summarizer). */
-export async function getTransactionSummaries(
-  userId: string = LOCAL_USER_ID
-) {
+export async function getTransactionSummaries(userId: string) {
+  const uid = requireFinanceUserId(userId);
   const db = await getDatabase();
   await runMigrations(db);
-  const list = await listTransactions(db, userId);
+  const list = await listTransactions(db, uid);
   return summarize(list);
 }
 

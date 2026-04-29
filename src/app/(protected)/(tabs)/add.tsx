@@ -35,7 +35,7 @@ export default function AddTransactionScreen() {
   const [note, setNote] = useState("");
 
   const [selectedCategory, setSelectedCategory] = useAtom(selectedCategoryAtom);
-  const { transactions, budgets, goals, categories, refresh } = useFinanceData();
+  const { transactions, budgets, goals, categories, refresh, userId } = useFinanceData();
   const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
   const budgetNotificationsEnabled = useAtomValue(budgetNotificationsEnabledAtom);
   const goalNotificationsEnabled = useAtomValue(goalNotificationsEnabledAtom);
@@ -83,9 +83,14 @@ export default function AddTransactionScreen() {
       createdAt: new Date().toISOString(),
     };
 
+    if (!userId) {
+      Alert.alert("Session", "Please sign in again to save.");
+      return;
+    }
+
     try {
       const db = await getDatabase();
-      await insertTransaction(db, newTransaction);
+      await insertTransaction(db, newTransaction, userId);
       await refresh();
       const next = [newTransaction, ...transactions];
       void maybeNotifyBudgetAlerts(next, budgets, budgetPrefs, {

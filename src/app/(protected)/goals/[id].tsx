@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useLocalSearchParams, router } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useAtomValue } from "jotai";
 
 import { goalNotificationsEnabledAtom } from "../../../atoms";
@@ -17,10 +17,11 @@ import { colors, radius, space, type } from "../../../constants/theme";
 import { getDatabase } from "../../../db/client";
 import { deleteGoalById, updateGoal } from "../../../db/goalsRepo";
 import { maybeNotifyGoalMilestones } from "../../../services/goalNotificationService";
+import { safeBack } from "../../../utils/navigation";
 
 export default function EditGoalScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { goals, transactions, refresh } = useFinanceData();
+  const { goals, transactions, refresh, userId } = useFinanceData();
   const goalNotificationsEnabled = useAtomValue(goalNotificationsEnabledAtom);
   const goal = useMemo(() => goals.find((g) => g.id === id), [goals, id]);
 
@@ -44,7 +45,7 @@ export default function EditGoalScreen() {
     return (
       <View style={styles.missing}>
         <Text style={styles.missingText}>Goal not found.</Text>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => safeBack()}>
           <Text style={styles.link}>Go back</Text>
         </Pressable>
       </View>
@@ -78,15 +79,20 @@ export default function EditGoalScreen() {
       monthlyContributionGoal: m && m > 0 ? m : undefined,
     };
 
+    if (!userId) {
+      Alert.alert("Session", "Please sign in again to save.");
+      return;
+    }
+
     try {
       const db = await getDatabase();
-      await updateGoal(db, updatedGoal);
+      await updateGoal(db, updatedGoal, userId);
       await refresh();
       const next = goals.map((g) => (g.id === goal.id ? updatedGoal : g));
       void maybeNotifyGoalMilestones(transactions, next, {
         enabled: goalNotificationsEnabled,
       });
-      router.back();
+      safeBack();
     } catch {
       Alert.alert(
         "Save failed",
@@ -103,14 +109,15 @@ export default function EditGoalScreen() {
         style: "destructive",
         onPress: async () => {
           try {
+            if (!userId) return;
             const db = await getDatabase();
-            await deleteGoalById(db, goal.id);
+            await deleteGoalById(db, goal.id, userId);
             await refresh();
             const next = goals.filter((g) => g.id !== goal.id);
             void maybeNotifyGoalMilestones(transactions, next, {
               enabled: goalNotificationsEnabled,
             });
-            router.back();
+            safeBack();
           } catch {
             Alert.alert(
               "Delete failed",

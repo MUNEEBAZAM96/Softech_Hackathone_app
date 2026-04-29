@@ -15,12 +15,15 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useSignUp } from "@clerk/clerk-expo";
+import { useSignUp, useSSO } from "@clerk/clerk-expo";
 
+import { continueWithGoogleFlow } from "../../auth/continueWithGoogle";
 import {
   AuthFormCard,
   AuthHaloShell,
+  AuthOrDivider,
   AuthPrimaryButton,
+  ContinueWithGoogleButton,
   PremiumAuthField,
   VerificationDigitsInput,
 } from "../../components/auth/premiumAuth";
@@ -36,6 +39,7 @@ const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function SignUpScreen() {
   const { isLoaded, signUp, setActive } = useSignUp();
+  const { startSSOFlow } = useSSO();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors, type, space, resolvedMode } = useAppTheme();
@@ -45,6 +49,7 @@ export default function SignUpScreen() {
   const [pendingVerification, setPendingVerification] = React.useState(false);
   const [code, setCode] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const [oauthLoading, setOauthLoading] = React.useState(false);
   const [lottieFailed, setLottieFailed] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [verifyError, setVerifyError] = React.useState<string | null>(null);
@@ -118,6 +123,33 @@ export default function SignUpScreen() {
     setCode("");
     setVerifyError(null);
   };
+
+  const onContinueWithGoogle = React.useCallback(async () => {
+    setFormError(null);
+    setOauthLoading(true);
+    try {
+      const result = await continueWithGoogleFlow(startSSOFlow, setActive);
+      if (result.ok) {
+        router.replace("/");
+        return;
+      }
+      if (result.reason === "cancelled") {
+        setFormError("Google sign-up was cancelled.");
+        return;
+      }
+      if (result.reason === "not_ready") {
+        setFormError("Please wait a moment and try again.");
+        return;
+      }
+      setFormError(
+        result.reason === "clerk_error" || result.reason === "no_session"
+          ? result.message
+          : "Please try again."
+      );
+    } finally {
+      setOauthLoading(false);
+    }
+  }, [router, setActive, startSSOFlow]);
 
   const haloBg =
     resolvedMode === "dark"
@@ -299,7 +331,7 @@ export default function SignUpScreen() {
                   loadingLabel="Verifying…"
                   loading={loading}
                   onPress={onVerifyPress}
-                  disabled={code.replace(/\D/g, "").length !== 6}
+                  disabled={code.replace(/\D/g, "").length !== 6 || oauthLoading}
                 />
 
                 <View style={styles.resendRow}>
@@ -344,6 +376,14 @@ export default function SignUpScreen() {
                 <Text style={styles.subtitle}>
                   It takes less than a minute to get started
                 </Text>
+
+                <ContinueWithGoogleButton
+                  onPress={onContinueWithGoogle}
+                  loading={oauthLoading}
+                  disabled={!isLoaded || loading}
+                />
+
+                <AuthOrDivider />
 
                 <PremiumAuthField
                   icon="mail-outline"
@@ -413,7 +453,7 @@ export default function SignUpScreen() {
                   loadingLabel="Creating…"
                   loading={loading}
                   onPress={onSignUpPress}
-                  disabled={loading}
+                  disabled={loading || oauthLoading}
                 />
 
                 <View style={styles.footer}>

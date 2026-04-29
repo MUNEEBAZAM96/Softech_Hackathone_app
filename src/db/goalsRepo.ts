@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
 import type { SavingsGoal } from "../types";
-import { LOCAL_USER_ID } from "./constants";
+import { requireFinanceUserId } from "./userIdGuard";
 
 type GoalRow = {
   id: string;
@@ -38,14 +38,15 @@ function mapGoalRow(row: GoalRow): SavingsGoal {
 
 export async function listGoals(
   db: SQLiteDatabase,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<SavingsGoal[]> {
+  const uid = requireFinanceUserId(userId);
   const rows = await db.getAllAsync<GoalRow>(
     `SELECT id, title, target_amount, current_amount, due_date, starting_amount, monthly_contribution_goal, created_at, updated_at, status
      FROM goals
      WHERE user_id = ?
      ORDER BY created_at DESC`,
-    [userId]
+    [uid]
   );
   return rows.map(mapGoalRow);
 }
@@ -67,8 +68,9 @@ function goalToRow(goal: SavingsGoal) {
 export async function insertGoal(
   db: SQLiteDatabase,
   goal: SavingsGoal,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<void> {
+  const uid = requireFinanceUserId(userId);
   const g = goalToRow(goal);
   const updatedAt = new Date().toISOString();
   await db.runAsync(
@@ -77,7 +79,7 @@ export async function insertGoal(
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       g.id,
-      userId,
+      uid,
       g.title,
       g.targetAmount,
       g.currentAmount,
@@ -94,8 +96,9 @@ export async function insertGoal(
 export async function updateGoal(
   db: SQLiteDatabase,
   goal: SavingsGoal,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<void> {
+  const uid = requireFinanceUserId(userId);
   const updatedAt = new Date().toISOString();
   await db.runAsync(
     `UPDATE goals
@@ -110,7 +113,7 @@ export async function updateGoal(
       goal.status,
       updatedAt,
       goal.id,
-      userId,
+      uid,
     ]
   );
 }
@@ -118,21 +121,23 @@ export async function updateGoal(
 export async function deleteGoalById(
   db: SQLiteDatabase,
   id: string,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<void> {
+  const uid = requireFinanceUserId(userId);
   await db.runAsync("DELETE FROM goals WHERE id = ? AND user_id = ?", [
     id,
-    userId,
+    uid,
   ]);
 }
 
 export async function countGoals(
   db: SQLiteDatabase,
-  userId: string = LOCAL_USER_ID
+  userId: string
 ): Promise<number> {
+  const uid = requireFinanceUserId(userId);
   const row = await db.getFirstAsync<{ c: number }>(
     "SELECT COUNT(1) as c FROM goals WHERE user_id = ?",
-    [userId]
+    [uid]
   );
   return Number(row?.c ?? 0);
 }

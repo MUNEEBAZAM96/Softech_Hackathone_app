@@ -6,6 +6,7 @@ import type {
   BudgetAlertPreferences,
   Category,
   CopilotMessage,
+  ReceiptDraft,
   ThemeMode,
 } from "./types";
 
@@ -57,3 +58,7 @@ export const copilotErrorAtom = atom<string | null>(null);
 
 /** Draft text for Insights Copilot input (not persisted). */
 export const copilotInputDraftAtom = atom("");
+
+/** Temporary receipt scan state for review flow (cleared after save/cancel). */
+export const receiptScanDraftAtom = atom<ReceiptDraft | null>(null);
+export const receiptScanImageUriAtom = atom<string | null>(null);
