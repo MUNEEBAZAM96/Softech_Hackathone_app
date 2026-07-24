@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "BudgetIQ AI",
-    "slug": "budgetiq-ai",
+    "slug": "budget-iq",
     "scheme": "budgetiq",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -22,7 +22,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0F172A"
-      }
+      },
+      "package": "com.stake12sorganization.budgetiq"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -39,6 +40,13 @@
       ],
       "expo-sqlite",
       "expo-web-browser"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "56302d85-b74b-4560-adf7-985d000fb777"
+      }
+    },
+    "owner": "stake12s-organization"
   }
 }

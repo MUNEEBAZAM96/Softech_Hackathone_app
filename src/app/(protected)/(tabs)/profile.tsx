@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import {
   Alert,
+  Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,6 +21,8 @@ import {
   goalNotificationsEnabledAtom,
 } from "../../../atoms";
 import { useAppTheme } from "../../../providers/ThemeProvider";
+import { useSubscription } from "../../../providers/SubscriptionProvider";
+import { logOutRevenueCat } from "../../../services/subscriptionService";
 import { getDatabase } from "../../../db/client";
 import {
   WIPE_LOCAL_FINANCE_DATA_ON_SIGNOUT,
@@ -45,9 +49,15 @@ const THEME_OPTIONS: { id: ThemeMode; label: string; hint: string }[] = [
   { id: "system", label: "System", hint: "Match device settings" },
 ];
 
+const STORE_SUBSCRIPTIONS_URL =
+  Platform.OS === "ios"
+    ? "https://apps.apple.com/account/subscriptions"
+    : "https://play.google.com/store/account/subscriptions";
+
 export default function ProfileScreen() {
   const { user } = useUser();
   const { signOut, userId: authUserId } = useAuth();
+  const { isPro } = useSubscription();
   const { colors, type, space, radius, mode, setMode, resolvedMode } =
     useAppTheme();
   const insets = useSafeAreaInsets();
@@ -196,8 +206,60 @@ export default function ProfileScreen() {
           color: colors.textMuted,
           marginTop: 2,
         },
+        subscriptionCard: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: space.s16,
+          paddingHorizontal: space.s16,
+          paddingVertical: space.s16,
+          backgroundColor: colors.surface,
+          borderRadius: radius.lg,
+          borderWidth: 1,
+          borderColor: isPro ? colors.primary : colors.border,
+        },
+        subscriptionBody: { flex: 1 },
+        subscriptionPlan: { ...type.bodyMedium },
+        subscriptionHint: {
+          ...type.caption,
+          color: colors.textMuted,
+          marginTop: 2,
+        },
+        proPill: {
+          paddingVertical: 4,
+          paddingHorizontal: space.s8 + 2,
+          borderRadius: radius.pill,
+          backgroundColor: colors.primary,
+        },
+        proPillText: {
+          ...type.captionBold,
+          color: "#FFFFFF",
+          letterSpacing: 1,
+        },
+        subscriptionAction: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: space.s8,
+          paddingVertical: space.s8,
+          paddingHorizontal: space.s16,
+          borderRadius: radius.pill,
+          backgroundColor: colors.primary,
+        },
+        subscriptionActionText: {
+          ...type.captionBold,
+          color: "#FFFFFF",
+        },
+        manageLink: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 4,
+          paddingVertical: space.s8,
+        },
+        manageLinkText: {
+          ...type.captionBold,
+          color: colors.primary,
+        },
       }),
-    [colors, type, space, radius]
+    [colors, type, space, radius, isPro]
   );
 
   const scrollBottomPadding = insets.bottom + 96;
@@ -218,6 +280,7 @@ export default function ProfileScreen() {
             } catch {
               /* best-effort; still sign out */
             }
+            await logOutRevenueCat();
             void signOut();
           })();
         },
@@ -260,6 +323,54 @@ export default function ProfileScreen() {
         </View>
         <Text style={styles.name}>{name}</Text>
         {!!email && <Text style={styles.email}>{email}</Text>}
+      </View>
+
+      <View>
+        <Text style={styles.sectionLabel}>Subscription</Text>
+        <View style={styles.subscriptionCard}>
+          <Ionicons
+            name={isPro ? "diamond" : "diamond-outline"}
+            size={22}
+            color={colors.primary}
+          />
+          <View style={styles.subscriptionBody}>
+            <Text style={styles.subscriptionPlan}>
+              {isPro ? "BudgetIQ Pro" : "Basic (Free)"}
+            </Text>
+            {isPro ? (
+              <Pressable
+                onPress={() => void Linking.openURL(STORE_SUBSCRIPTIONS_URL)}
+                style={styles.manageLink}
+                accessibilityRole="link"
+              >
+                <Text style={styles.manageLinkText}>Manage Subscription</Text>
+                <Ionicons
+                  name="open-outline"
+                  size={14}
+                  color={colors.primary}
+                />
+              </Pressable>
+            ) : (
+              <Text style={styles.subscriptionHint}>
+                Unlock AI tips and the Copilot chat.
+              </Text>
+            )}
+          </View>
+          {isPro ? (
+            <View style={styles.proPill}>
+              <Text style={styles.proPillText}>PRO</Text>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => router.push("/paywall")}
+              style={styles.subscriptionAction}
+              accessibilityRole="button"
+            >
+              <Ionicons name="sparkles" size={14} color="#FFFFFF" />
+              <Text style={styles.subscriptionActionText}>Upgrade</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <View>

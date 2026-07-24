@@ -6,6 +6,7 @@ import { Slot } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 
 import { ThemeProvider, ThemedStatusBar } from "../providers/ThemeProvider";
+import { SubscriptionProvider } from "../providers/SubscriptionProvider";
 import { initBudgetNotifications } from "../services/budgetNotificationService";
 import { initGoalNotifications } from "../services/goalNotificationService";
 
@@ -26,10 +27,12 @@ export default function RootLayout() {
   return (
     <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
       <ClerkLoaded>
-        <ThemeProvider>
-          <ThemedStatusBar />
-          <Slot />
-        </ThemeProvider>
+        <SubscriptionProvider>
+          <ThemeProvider>
+            <ThemedStatusBar />
+            <Slot />
+          </ThemeProvider>
+        </SubscriptionProvider>
       </ClerkLoaded>
     </ClerkProvider>
   );

@@ -39,6 +39,13 @@ function ProtectedStack() {
           animation: "slide_from_right",
         }}
       />
+      <Stack.Screen
+        name="paywall"
+        options={{
+          presentation: "modal",
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

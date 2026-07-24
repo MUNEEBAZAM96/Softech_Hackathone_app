@@ -39,6 +39,7 @@ import {
   getTipFetchUserMessage,
 } from "../../../services/dailyTipService";
 import { useAppTheme } from "../../../providers/ThemeProvider";
+import { useSubscription } from "../../../providers/SubscriptionProvider";
 
 import DashboardHero from "../../../components/dashboard/DashboardHero";
 import CalendarSectionToggle from "../../../components/dashboard/CalendarSectionToggle";
@@ -55,6 +56,7 @@ import TransactionListItem from "../../../components/TransactionListItem";
 
 export default function DashboardScreen() {
   const { colors, type, space } = useAppTheme();
+  const { isPro } = useSubscription();
   const { transactions, goals, budgets, categories, refresh } = useFinanceData();
   const budgetPrefs = useAtomValue(budgetAlertPreferencesAtom);
   const dismissedAlerts = useAtomValue(dismissedBudgetAlertIdsAtom);
@@ -209,6 +211,8 @@ export default function DashboardScreen() {
 
   const loadTip = useCallback(
     async (reason: "initial" | "refresh" | "new") => {
+      // Pro-only: never spend AI tokens for free users.
+      if (!isPro) return;
       const variationSeed =
         reason === "new"
           ? Math.floor(Math.random() * 0x7fffffff) ^ Date.now()
@@ -238,6 +242,7 @@ export default function DashboardScreen() {
       }
     },
     [
+      isPro,
       monthKey,
       summary,
       mom,
@@ -248,10 +253,10 @@ export default function DashboardScreen() {
   );
 
   useEffect(() => {
-    if (initialTipSentRef.current) return;
+    if (!isPro || initialTipSentRef.current) return;
     initialTipSentRef.current = true;
     void loadTip("initial");
-  }, [loadTip]);
+  }, [isPro, loadTip]);
 
   const onPullRefresh = useCallback(async () => {
     setPullRefreshing(true);
@@ -308,6 +313,7 @@ export default function DashboardScreen() {
 
       <View style={styles.section}>
         <AITipOfTheDay
+          isPro={isPro}
           message={tipText}
           loading={tipLoading}
           errorMessage={tipError}
